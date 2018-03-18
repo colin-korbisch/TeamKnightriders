@@ -1,8 +1,7 @@
 # TeamKnightriders
 Repository for mechatronics team project at CU Boulder. 
 
-Curret Files
-_______________________________________
+<b> Curret Files </b>
 
   BlackTapeSteering.ino
   
