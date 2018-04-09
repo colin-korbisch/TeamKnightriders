@@ -5,20 +5,25 @@ class TreeNode:
         self.children = []
         self.orientation = orient
         self.location = num
+        self.parent = []
 
-def buildTree(node,nodeMap,stopCon):
-    if not stopCon:
+def cityPath(stB,stO, endB, endO):
+    cityMap,stOrient = buildMap(stB,stO,endB,endO)
+    cityTree = TreeNode(12,stOrient)
+    cityTree = buildTree(cityTree,cityMap)
+    out_path, outCommands = buildPath(cityTree)
+    return out_path, outCommands
+
+def buildTree(node,nodeMap,recLevel = 0):
+    if recLevel <=14 and node.location != 13:
         orient = node.orientation
         loc = node.location
-        neigh, c, newOr = findNeighbors(loc,nodeMap,orient)
+        neigh, c, newOr = findNeighbors(loc,nodeMap,orient)      
         
-        if 13 in neigh:
-            stopCon = True
-
         for i in range(len(neigh)):
             child = TreeNode(neigh[i],newOr[i])
-
-            currChild = buildTree(child,nodeMap,stopCon)
+            child.parent = node
+            currChild = buildTree(child,nodeMap,recLevel+1)
             node.children.append(currChild)
     #end loop
 
@@ -27,18 +32,16 @@ def buildTree(node,nodeMap,stopCon):
 
 def findNeighbors(nodeStart,nodeMap,orient):
 
-    #NO U-TURNS!
     newOr = []
     neighbors = []
     stepCosts = []
-
     loc = nodeMap[nodeStart]['coord']
     loc = np.array(loc)
 
     stepSearch = [1,1,-1,-1]
     halfSearch = [0.5,0.5,-0.5,-0.5]
 
-    allowDir = nodeMap[nodeStart]['allow']
+    allowDir = nodeMap[nodeStart]['allow'][:]
     endAllow = nodeMap[13]['allow']
 
     if orient == 1:
@@ -68,7 +71,7 @@ def findNeighbors(nodeStart,nodeMap,orient):
                 if not endAllow[i]:
                     HnodeN = None
 
-            if HnodeN:
+            if HnodeN != None:
                 neighbors.append(HnodeN)
                 stepCosts.append(0.5)
                 newOr.append(i+1)
@@ -85,6 +88,12 @@ def searchCoords(nodeMap, loc):
         if dic['coord'][0] == loc[0] and dic['coord'][1] == loc[1]:
             return i
     return None
+
+def dist_between(cur,neighbor,nodeMap):
+    locS = np.array(nodeMap[cur]['coord'])
+    locE = np.array(nodeMap[neighbor]['coord'])
+    dist =  abs(locS - locE)    
+    return dist[0] + dist[1]
 
 
 def buildMap(sblock,spos,eblock,epos):
@@ -184,8 +193,52 @@ def buildNode(block,pos):
 
     return node
 
+def buildPath(cityTree,level=0,maxLevel=13,t_out = [], level_out = [], outC = []):
+    cur_pos = cityTree.location
+    leafs = cityTree.children
+    if leafs:
+        endID = [el for el in range(len(leafs)) if leafs[el].location == 13]
+        if endID:
+            path, commands = getPath(leafs[endID[0]])
+            t_out.append(path)
+            outC.append(commands)
+            level_out.append(len(path))
+        else:
+            for i in range(len(leafs)):
+                loc = leafs[i].location                
+                if level >= maxLevel:
+                    t_out.append(-1)
+                    outC.append(-1)
+                    level_out.append(level)
+                else:
+                    buildPath(leafs[i],level+1,maxLevel,t_out,level_out, outC)
+    if level_out:
+        min_path = level_out.index(min(level_out))
+        output = t_out[min_path]
+        outCommands = outC[min_path]
+        return output, outCommands
 
-# Example Map
-cityMap = buildMap(6,3,2,1)
-cityTree = TreeNode(12,4)
-cityTree = buildTree(cityTree,cityMap,False)
+
+def getPath(endNode):
+    outpath = []
+    outCommands = []
+    while endNode.location != 12:
+        ornt = endNode.orientation
+        p_ornt = endNode.parent.orientation
+        ornt_diff = ornt-p_ornt
+        if ornt_diff == -1 or ornt_diff == 3:
+            outCommands.append('L')
+        elif ornt_diff == 1 or ornt_diff == -3:
+            outCommands.append('R')
+        elif ornt_diff == 0:
+            outCommands.append('S')
+        outpath.append(endNode.location)
+        endNode = endNode.parent
+    outpath.append(12)
+    return outpath,outCommands
+
+
+
+out_path, outCommands = cityPath(2,1,1,1)
+print(out_path[::-1])
+print(outCommands[::-1])
