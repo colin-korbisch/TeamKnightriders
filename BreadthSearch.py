@@ -238,7 +238,7 @@ def getPath(endNode):
     return outpath,outCommands
 
 
-
-out_path, outCommands = cityPath(2,1,1,1)
-print(out_path[::-1])
-print(outCommands[::-1])
+if __name__ == "__main__":
+    out_path, outCommands = cityPath(2,1,1,1)
+    print(out_path[::-1])
+    print(outCommands[::-1])
