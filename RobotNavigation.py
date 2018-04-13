@@ -62,8 +62,8 @@ def PollCurLoc():
 	robotLoc = []
 	while not robotLoc:
 		rad_Data = getRadioSignal()
-		if "ROBOT" in rad_Data:
-			robotLoc = rad_Data
+		data = rad_Data.split(" ")
+		data
 	robNode = pixel2node(robotLoc)
 
 def sendState(stateIndex):
@@ -91,6 +91,11 @@ def GoStraight(skipIntersect,nxTurn):
 	# continue going straight until you skip the correct num intersections
 	# once you do, approach the intersection until you are at the correct distance
 	# once at the correct distance, leave this state to begin your turn
+
+	#NEED TO FIX:
+	# DO INTERSECTION DETECTION BY VIEWING THE GAP IN EITHER THE LEFT OR RIGHT SIDES
+
+	
 	leave = False
 	numDownIntersect = False
 
