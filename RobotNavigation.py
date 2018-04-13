@@ -11,12 +11,26 @@ def pixel2coord(pixelLoc):
 	# need pixel to block/position conversion
 	return pixelPosition
 
-def sendStateCommand(stateIndex):
-	# more stuff
-
 def TurnLeft():
 
+
 def TurnRight():
+	sendState(1)
+	for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+		# Do some image processing stuff...
+		rho_out, theta_out = readFrame(frame)
+		for i in range(len(theta_out)):
+			theta = theta_out[i]
+			if abs(theta) <= 0.1 or theta >= 2*np.pi-0.1:
+				theta = np.pi
+
+			elif abs(theta) <= np.pi/2 and abs(theta) >= 3*np.pi/8:
+				findLeft = True
+
+			elif abs(theta) >= np.pi/2 and abs(theta) <= 5*np.pi/8:
+				findRight = True
+		if findLeft and findRight
+			break
 
 def UpdateMap(pickup):
 	rad_Data = []
@@ -80,13 +94,13 @@ def GoStraight(skipIntersect,nxTurn):
 	leave = False
 	numDownIntersect = False
 
-	setpointL = np.pi/2 - 0.1
-	setpointR = np.pi/2 + 0.1
+	setpointL = 0.1571
+	setpointR = 2.7925
 
 	if nxTurn == 'L':
 		dist = #Ldistance
 	else:
-		dist = #Rdistance
+		dist = 100
 
 	leaveIntersection = #leaving the intersection distance
 
@@ -138,7 +152,7 @@ def GoStraight(skipIntersect,nxTurn):
 			numDownIntersect = False
 
 
-		
+def sendTurnError(error_signal)		
 
 
 def PsngerPickup():
@@ -151,8 +165,11 @@ def readFrame(frame):
 	imgSmall = cv2.resize(imgini,(150,150),cv2.INTER_AREA)
 	img=cv2.cvtColor(imgSmall,cv2.COLOR_BGR2HSV)
 	
-	lowboundsYellow = np.array([10,59,67])
-	upboundsYellow = np.array([39,229,219])
+	# lowboundsYellow = np.array([10,59,67])
+	# upboundsYellow = np.array([39,229,219])
+
+	lowboundsYellow = np.array([25,29,60])
+	upboundsYellow = np.array([28,236,255])
 
 	lbPurp = np.array([141,18,97])
 	ubPurp = np.array([170,112,143])
@@ -184,6 +201,7 @@ curState = outcommands.pop()
 curLoc = outpath.pop()
 run_robot = True
 is_pickup = False
+move_complete = False
 
 
 # initialize the camera and grab a reference to the raw camera capture
@@ -219,12 +237,19 @@ while run_robot:
 	elif curState == 'R':
 		# turn right until do something else
 		TurnRight()
+		curState = 'S0'
+		bstop = GoStraight(0,outcommands[-1])
+		if bstop:
+			StopCar()
+		move_complete = True
+
 	elif curState == 'L':
 		# turn left until something else
 		TurnLeft()
 	if move_complete:
 		curState = outcommands.pop()
 		curLoc = outpath.pop()
+		move_complete = False
 
 	if curLoc == 13 and not is_pickup:
 		PsngerPickup()
@@ -238,14 +263,3 @@ while run_robot:
 		break
 
 
-while run_robot:
-	if curState == 'S':
-		GoStraight()
-	elif curState == 'R':
-		TurnRight()
-	elif curState == 'L':
-		TurnLeft()
-	PsngerPickup()
-	# After pickup is completed, build new path to the drop-off area
-	outpath, outcommands = UpdateMap(0)
-	PsngerDropoff()
