@@ -99,7 +99,8 @@ def GoStraight(skipIntersect,nxTurn):
 		if sum(np.equal(signature,1)) > 3:
 			return True
 			break
-
+		leftError = []
+		rightError = []
 		for i in range(len(theta_out)):
 			theta = theta_out[i]
 			if abs(theta) <= 0.1 or theta >= 2*np.pi-0.1:
@@ -112,11 +113,29 @@ def GoStraight(skipIntersect,nxTurn):
 					break
 				elif yloc >= leaveIntersection:
 					numDownIntersect = True
-					
+
+			elif abs(theta) <= np.pi/2 and abs(theta) >= np.pi/4:
+				leftError.append(abs(setpointL - abs(theta)))
+
+			elif abs(theta) >= np.pi/2 and abs(theta) <= 3*np.pi/4:
+				rightError.append(abs(setpointR - abs(theta)))
 		if leave:
 			break
+		if leftError:
+			lE = np.mean(leftError)
+		if rightError:
+			rE = np.mean(rightError)
+		if lE and rE:
+			Esignal = np.mean([lE,rE])
+		elif lE:
+			Esignal = lE
+		elif rE:
+			Esignal = rE
+		if Esignal:
+			sendTurnError(Esignal)			
 		if numDownIntersect:
 			skipIntersect -= 1
+			numDownIntersect = False
 
 
 		
