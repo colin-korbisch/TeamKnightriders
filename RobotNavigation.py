@@ -95,66 +95,97 @@ def GoStraight(skipIntersect,nxTurn):
 	#NEED TO FIX:
 	# DO INTERSECTION DETECTION BY VIEWING THE GAP IN EITHER THE LEFT OR RIGHT SIDES
 
-	
+
 	leave = False
 	numDownIntersect = False
 
-	setpointL = 0.1571
-	setpointR = 2.7925
+	setpointL = 0.1571 # 9 Degrees
+	setpointR = 2.7925 # 160 Degrees
 
 	if nxTurn == 'L':
 		dist = #Ldistance
 	else:
 		dist = 100
 
-	leaveIntersection = #leaving the intersection distance
+
 
 	sendState(0)
 	for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
 		# Do some image processing stuff...
 		rho_out, theta_out = readFrame(frame)
+		if not isinstance(theta_out,np.ndarray):
+			theta_out = np.array(theta_out)
+		if not isinstance(rho_out,np.ndarray):
+			rho_out = np.array(rho_out)
+
+		# Check for stop lights
 		signature = lookStopLight()
 
 		if sum(np.equal(signature,1)) > 3:
 			return True
 			break
+		
+
+
 		leftError = []
 		rightError = []
-		for i in range(len(theta_out)):
-			theta = theta_out[i]
-			if abs(theta) <= 0.1 or theta >= 2*np.pi-0.1:
-				theta = np.pi
 
-			if abs(theta) <= np.pi + 0.1 and abs(theta) >= np.pi - 0.1:
-				yloc = np.sin(theta) * rho_out[i]
-				if yloc >= dist and skipIntersect == 0:
-					leave = True
-					break
-				elif yloc >= leaveIntersection:
-					numDownIntersect = True
+		#Find right lines:
+		arr1 = np.greater_equal(theta_out,np.pi/2)
+		arr2 = np.lesser_equal(theta_out,5*np.pi/8)
+		and_arr = np.logical_and(arr1,arr2)
+		rightLineIDs = np.where(and_arr)
 
-			elif abs(theta) <= np.pi/2 and abs(theta) >= np.pi/4:
-				leftError.append(abs(setpointL - abs(theta)))
 
-			elif abs(theta) >= np.pi/2 and abs(theta) <= 3*np.pi/4:
-				rightError.append(abs(setpointR - abs(theta)))
-		if leave:
-			break
-		if leftError:
-			lE = np.mean(leftError)
-		if rightError:
-			rE = np.mean(rightError)
-		if lE and rE:
-			Esignal = np.mean([lE,rE])
-		elif lE:
-			Esignal = lE
-		elif rE:
-			Esignal = rE
-		if Esignal:
-			sendTurnError(Esignal)			
-		if numDownIntersect:
-			skipIntersect -= 1
-			numDownIntersect = False
+		#Find left lines:
+		arr1 = np.greater_equal(theta_out,3*np.pi/8)
+		arr2 = np.lesser_equal(theta_out,np.pi/2)
+		and_arr = np.logical_and(arr1,arr2)
+		leftLineIDs = np.where(and_arr)
+
+
+		#Find horz lines:
+		rotateTheta = theta_out - np.pi
+		arr1 = np.greater_equal(rotateTheta,7*np.pi/8)
+		arr2 = np.lesser_equal(rotateTheta,np.pi/8)
+		and_arr = np.logical_and(arr1,arr2)
+		horzLineIDs = np.where(and_arr)
+
+		# for i in range(len(theta_out)):
+		# 	theta = theta_out[i]
+		# 	if abs(theta) <= 0.1 or theta >= 2*np.pi-0.1:
+		# 		theta = np.pi
+
+		# 	if abs(theta) <= np.pi + 0.1 and abs(theta) >= np.pi - 0.1:
+		# 		yloc = np.sin(theta) * rho_out[i]
+		# 		if yloc >= dist and skipIntersect == 0:
+		# 			leave = True
+		# 			break
+		# 		elif yloc >= leaveIntersection:
+		# 			numDownIntersect = True
+
+		# 	elif abs(theta) <= np.pi/2 and abs(theta) >= np.pi/4:
+		# 		leftError.append(abs(setpointL - abs(theta)))
+
+		# 	elif abs(theta) >= np.pi/2 and abs(theta) <= 3*np.pi/4:
+		# 		rightError.append(abs(setpointR - abs(theta)))
+		# if leave:
+		# 	break
+		# if leftError:
+		# 	lE = np.mean(leftError)
+		# if rightError:
+		# 	rE = np.mean(rightError)
+		# if lE and rE:
+		# 	Esignal = np.mean([lE,rE])
+		# elif lE:
+		# 	Esignal = lE
+		# elif rE:
+		# 	Esignal = rE
+		# if Esignal:
+		# 	sendTurnError(Esignal)			
+		# if numDownIntersect:
+		# 	skipIntersect -= 1
+		# 	numDownIntersect = False
 
 
 def sendTurnError(error_signal)		
