@@ -72,7 +72,7 @@ def sendState(stateIndex):
 def lookStopLight():
 	out = []
 	i = 0
-	while i < 6
+	while i < 4
 		word = bus.read_word_data(DEVICE_ADDRESS, 0)
 			if word == 0xaa55:
 				i += 1
@@ -92,8 +92,7 @@ def GoStraight(skipIntersect,nxTurn):
 	# once you do, approach the intersection until you are at the correct distance
 	# once at the correct distance, leave this state to begin your turn
 
-	#NEED TO FIX:
-	# DO INTERSECTION DETECTION BY VIEWING THE GAP IN EITHER THE LEFT OR RIGHT SIDES
+
 
 
 	leave = False
@@ -112,14 +111,17 @@ def GoStraight(skipIntersect,nxTurn):
 	sendState(0)
 	for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
 		# Do some image processing stuff...
-		rho_out, theta_out = readFrame(frame)
+		rho_out, theta_out, isintersect = readFrame(frame)
+
+		# should read the frame for any white cross-walks:
+
+
 		if not isinstance(theta_out,np.ndarray):
 			theta_out = np.array(theta_out)
 		if not isinstance(rho_out,np.ndarray):
 			rho_out = np.array(rho_out)
 
-		# Check for stop lights
-		signature = lookStopLight()
+
 
 		if sum(np.equal(signature,1)) > 3:
 			return True
@@ -136,6 +138,9 @@ def GoStraight(skipIntersect,nxTurn):
 		and_arr = np.logical_and(arr1,arr2)
 		rightLineIDs = np.where(and_arr)
 
+		# Right Error:
+		if rightLineIDs[0].size:
+			RError = setpointR - np.mean(theta_out[rightLineIDs])
 
 		#Find left lines:
 		arr1 = np.greater_equal(theta_out,3*np.pi/8)
@@ -143,6 +148,20 @@ def GoStraight(skipIntersect,nxTurn):
 		and_arr = np.logical_and(arr1,arr2)
 		leftLineIDs = np.where(and_arr)
 
+		# Left Error:
+		if leftLineIDs[0].size:
+			LError = setpointL - np.mean(theta_out[leftLineIDs])
+
+		# Mean Error:
+		if LError:
+			if RError:
+				ErrorSignal = (LError+RError)/2
+			else:
+				ErrorSignal = LError
+		elif RError:
+			ErrorSignal = RError
+		else:
+			ErrorSignal = 0
 
 		#Find horz lines:
 		rotateTheta = theta_out - np.pi
@@ -150,6 +169,11 @@ def GoStraight(skipIntersect,nxTurn):
 		arr2 = np.lesser_equal(rotateTheta,np.pi/8)
 		and_arr = np.logical_and(arr1,arr2)
 		horzLineIDs = np.where(and_arr)
+
+		# Check for stop lights
+		# NEED TO TIGHTEN-UP THIS CONDITION
+		if isintersect:
+			signature = lookStopLight()
 
 		# for i in range(len(theta_out)):
 		# 	theta = theta_out[i]
@@ -194,9 +218,38 @@ def sendTurnError(error_signal)
 def PsngerPickup():
 
 
-def readFrame(frame):
+def readFrame(frame, isintersect):
+	def interDetect(mask,row):
+		interLine = mask[row]
+		findYellow = np.where(np.equal(interLine,255))
+		if findYellow[0].size:
+			findLine = np.amax(findYellow)
+		else
+			findLine = 0
+		if findLine < 100:
+			isintersect = True
+		elif findLine > 100 and isintersect:
+			interLineTop = mask[row-10]
+			interLineBot = mask[row+10]
+			fLineT = np.where(np.equal(interLineTop,255))
+			fLineB = np.where(np.equal(interLineBot,255))
+			if fLineT[0].size:
+				findYelTop = np.amax(fLineT)
+			else:
+				findYelTop = 0
+			if fLineB[0].size:
+				findYelBot = np.amax(fLineB)
+			else:
+				findYelBot = 0
+			if findYelTop < 100 and findYelBot < 100:
+				isintersect = True
+			else:
+				isintersect = False
+		return isintersect
+
 	rho_out = []
 	theta_out = []
+	intersectDetectRow = 20
 
 	imgSmall = cv2.resize(imgini,(150,150),cv2.INTER_AREA)
 	img=cv2.cvtColor(imgSmall,cv2.COLOR_BGR2HSV)
@@ -229,7 +282,25 @@ def readFrame(frame):
 		rho_out.append(rho)
 		theta_out.append(theta)
 
-	return rho_out, theta_out
+	# Intersection Detection
+
+	# interLine = maskY[intersectDetectRow]
+	# findLine = np.amax(np.where(np.equal(interLine,255)))
+	# if findLine < 100:
+	# 	isintersect = True
+	# elif findLine > 100 and isintersect:
+	# 	isintersect = False
+	l1 = interDetect(maskTot,intersectDetectRow-1)
+	l2 = interDetect(maskTot,intersectDetectRow)
+	l3 = interDetect(maskTot,intersectDetectRow+1)
+
+	if sum([l1,l2,l3]) > 1:
+		isintersect = True
+	elif sum([l1,l2,l3]) < 1 and isintersect:
+		isintersect = False
+
+
+	return rho_out, theta_out, isintersect
 
 # Initialize Robot and Passenger Locations:
 outpath, outcommands = UpdateMap(1)
@@ -238,12 +309,14 @@ curLoc = outpath.pop()
 run_robot = True
 is_pickup = False
 move_complete = False
+isintersect = False
 
 
 # initialize the camera and grab a reference to the raw camera capture
 global camera
 global rawCapture
 global DEVICE_ADDRESS
+global isintersect
 
 camera = PiCamera()
 camera.resolution = (640, 360)
