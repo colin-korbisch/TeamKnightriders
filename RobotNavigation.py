@@ -97,6 +97,7 @@ def GoStraight(skipIntersect,nxTurn):
 
 	leave = False
 	numDownIntersect = False
+	isintersect = False
 
 	setpointL = 0.1571 # 9 Degrees
 	setpointR = 2.7925 # 160 Degrees
@@ -175,41 +176,7 @@ def GoStraight(skipIntersect,nxTurn):
 		if isintersect:
 			signature = lookStopLight()
 
-		# for i in range(len(theta_out)):
-		# 	theta = theta_out[i]
-		# 	if abs(theta) <= 0.1 or theta >= 2*np.pi-0.1:
-		# 		theta = np.pi
 
-		# 	if abs(theta) <= np.pi + 0.1 and abs(theta) >= np.pi - 0.1:
-		# 		yloc = np.sin(theta) * rho_out[i]
-		# 		if yloc >= dist and skipIntersect == 0:
-		# 			leave = True
-		# 			break
-		# 		elif yloc >= leaveIntersection:
-		# 			numDownIntersect = True
-
-		# 	elif abs(theta) <= np.pi/2 and abs(theta) >= np.pi/4:
-		# 		leftError.append(abs(setpointL - abs(theta)))
-
-		# 	elif abs(theta) >= np.pi/2 and abs(theta) <= 3*np.pi/4:
-		# 		rightError.append(abs(setpointR - abs(theta)))
-		# if leave:
-		# 	break
-		# if leftError:
-		# 	lE = np.mean(leftError)
-		# if rightError:
-		# 	rE = np.mean(rightError)
-		# if lE and rE:
-		# 	Esignal = np.mean([lE,rE])
-		# elif lE:
-		# 	Esignal = lE
-		# elif rE:
-		# 	Esignal = rE
-		# if Esignal:
-		# 	sendTurnError(Esignal)			
-		# if numDownIntersect:
-		# 	skipIntersect -= 1
-		# 	numDownIntersect = False
 
 
 def sendTurnError(error_signal)		
@@ -219,7 +186,7 @@ def PsngerPickup():
 
 
 def readFrame(frame, isintersect):
-	def interDetect(mask,row):
+	def interDetect(mask,row,isintersect):
 		interLine = mask[row]
 		findYellow = np.where(np.equal(interLine,255))
 		if findYellow[0].size:
@@ -290,9 +257,9 @@ def readFrame(frame, isintersect):
 	# 	isintersect = True
 	# elif findLine > 100 and isintersect:
 	# 	isintersect = False
-	l1 = interDetect(maskTot,intersectDetectRow-1)
-	l2 = interDetect(maskTot,intersectDetectRow)
-	l3 = interDetect(maskTot,intersectDetectRow+1)
+	l1 = interDetect(maskTot,intersectDetectRow-1,isintersect)
+	l2 = interDetect(maskTot,intersectDetectRow,isintersect)
+	l3 = interDetect(maskTot,intersectDetectRow+1,isintersect)
 
 	if sum([l1,l2,l3]) > 1:
 		isintersect = True
