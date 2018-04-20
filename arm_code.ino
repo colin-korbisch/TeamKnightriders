@@ -1,152 +1,211 @@
-#include <Adafruit_CircuitPlayground.h>
-#include <Adafruit_Circuit_Playground.h>
-
-#include <Adafruit_PWMServoDriver.h>
-
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
 
 
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
-#define SERVOMIN  400 // this is the 'minimum' pulse length count (out of 4096)
-#define SERVOMAX  500 // this is the 'maximum' pulse length count (out of 4096)
-
-uint8_t servonum = 0;
-uint16_t pulselen;
 
 void setup() {
   Serial.begin(9600);
   Serial.println("16 channel Servo test!");
   pwm.begin();
   pwm.setPWMFreq(60);  // Analog servos run at ~60 Hz updates
+  
+  //set to initial rest position for SAFETY :O
+  pwm.setPWM(0, 0, 130); //perpendicular to car
+  delay(50);
+  pwm.setPWM(1, 0, 380); //shoulder: obtuse angle back(rest position)
+  delay(50);
+  pwm.setPWM(2, 0, 470); //holds elbow parallel to ground in rest position
+  delay(50);
+  pwm.setPWM(3, 0, 350); //Wrist in rest position
+  delay(50);
+  pwm.setPWM(4, 0, 250); //gripper open
+  delay(500);
+  pwm.setPWM(0, 0, 290); //positioned over car
+  delay(3000);
 }
 
-void loop()
-{
-delay(1000);
-//rest position
-  for(int i =0; i<=290; )
-  {
-    pwm.setPWM(1, 0, i); //acute angle forward (mid position)
-    i = i +10;
+void loop() {
+  delay(1000);
+  //PICK UP PASSENGER
+  //from initial rest position to position 1
+  for (int i = 290; i >= 130;) {
+    pwm.setPWM(0, 0, i); //moving from over car to perpendicular to car
+    i = i - 10;
+    delay (50);
+  }
+  for (int i = 350; i <= 460;) {
+    pwm.setPWM(3, 0, i); //wrist from rest to reaching
+    i = i + 10;
+    delay(50);
+  }
+  for (int i = 380; i >= 220; ) {
+    pwm.setPWM(1, 0, i); //shoulder from (obtuse angle) rest to reaching
+    i = i - 10;
     delay(50);
   }
   
-delay(200);
+  delay(200);
 
-  for (int j =0; j<=550;)
-  {
-    pwm.setPWM(2, 0, j); //holds elbow parallel to ground in rest position
+//from pos1 to pos2 move wrist facing down more, move shoulder down, then move elbow up
+//arm should now reach forward moving gripper horizontally to position 2 and close gripper
+  for (int i = 460; i >= 400;) {
+    pwm.setPWM(3, 0, i); //wrist from reaching pos1 to fully extended pos 2
+    i = i - 10;
+    delay(50);
+  }
+  for (int i = 220; i >= 210;) {
+    pwm.setPWM(1, 0, i); //shoulder from reaching pos 1 to fully extended pos 2
+    i = i - 10;
+    delay(50);
+  }
+  for (int j=470; j>=380;){
+    pwm.setPWM(2, 0, j); //elbow from horizontal(rest/pos1) to fully extended
+    j = j-10;
+    delay(50);
+  }
+  for (int i = 210; i >= 180;) {
+    pwm.setPWM(1, 0, i); //shoulder from reaching pos 1 to fully extended pos 2
+    i = i - 10;
+    delay(50);
+  }
+  for (int j=380; j>=350;){
+    pwm.setPWM(2, 0, j); //elbow from horizontal(rest/pos1) to fully extended
+    j = j-10;
+    delay(50);
+  }
+  for (int i = 250; i <= 318;) {
+    pwm.setPWM(4, 0, i); //gripper from open to close
+    i = i + 10;
+    delay(100);
+  }
+  delay(2000);
+
+ //arm should now move gripper back horizontally back to position 1 with closed gripper
+ //should start at wrist then shoulder then elbow
+  for (int i = 400; i <= 460;) {
+    pwm.setPWM(3, 0, i); //wrist from fully extended pos 2 to reaching pos1
+    i = i + 10;
+    delay(50);
+  }
+  for (int i = 190; i <= 220;) {
+    pwm.setPWM(1, 0, i); //shoulder from fully extended pos 2 to reaching pos 1
+    i = i + 10;
+    delay(50);
+  }
+  for (int j=400; j<=470;){
+    pwm.setPWM(2, 0, j); //elbow from fully extended to horizontal(rest/pos1)
     j = j+10;
     delay(50);
   }
-  
-delay(200);
+delay(500);
 
-  for (int k = 0; k<=380; )
-  {
-  pwm.setPWM(1, 0, k); //obtuse angle back(rest position)
-  k = k+10;
-  delay(50);
+  //arm returns to rest position from pos1
+   for (int i = 220; i <= 380;) {
+    pwm.setPWM(1, 0, i); //shoulder from reaching (pos 1) to (obtuse angle) rest
+    i = i + 10;
+    delay(50);
   }
-  
-delay(200);
-
-  for (int l = 0; l<=290; )
-  { pwm.setPWM(0, 0, l); //positioned over car
-     l = l+10;
-     delay(50);
+  for (int i = 130; i <= 290;) {
+    pwm.setPWM(0, 0, i); //moving from perpendicular to car to over car
+    i = i + 10;
+    delay (50);
   }
-  
-delay(200);
-
-  for( int m = 0; m<=350; )
-  {
-  pwm.setPWM(3, 0, m); //Wrist in rest position
-  m = m+10;
-  delay(50);
+  for (int i = 460; i >= 350;) {
+    pwm.setPWM(3, 0, i); //wrist from position 1 to rest
+    i = i - 10;
+    delay(50);
   }
 
-delay(2000);
+  delay(2000);
 
 
-//pwm.setPWM(3, 0, 400); //Wrist mid
-//delay(200);
-
-for( int n =0; n<=530;)
-  {
-  pwm.setPWM(3, 0, n); //Wrist reaching horizontal to ground
-  n = n+10;
-  delay(50);
-  } 
-delay(200);
-
-//into position 1
-  for(int o = 0; o<=130; )
-  {
-  pwm.setPWM(0, 0, o); //perpendicular to car
-  o = o+10;
-  delay(50);
+  //DROP OFF PASSENGER
+  //from rest position to position 1
+  for (int i = 290; i >= 130;) {
+    pwm.setPWM(0, 0, i); //moving from over car to perpendicular to car
+    i = i - 10;
+    delay (50);
+  }
+  for (int i = 350; i <= 460;) {
+    pwm.setPWM(3, 0, i); //wrist from rest to reaching
+    i = i + 10;
+    delay(50);
+  }
+  for (int i = 380; i >= 220; ) {
+    pwm.setPWM(1, 0, i); //shoulder from (obtuse angle) rest to reaching
+    i = i - 10;
+    delay(50);
   }
 
-delay(200);
-//pwm.setPWM(2, 0, 510); //not used currently 
-//delay(200);
-
-  for(int p = 0; p<=200; )
-  { 
-  pwm.setPWM(1, 0, p); //acute angle forward (reach position
-  p = p+10;
-  delay(50);
+ //from pos1 to pos2 move wrist facing down more, move shoulder down, then move elbow up
+//arm should now reach forward moving gripper horizontally to position 2 and open gripper
+  for (int i = 460; i >= 400;) {
+    pwm.setPWM(3, 0, i); //wrist from reaching pos1 to fully extended pos 2
+    i = i - 10;
+    delay(50);
   }
+  for (int i = 220; i >= 210;) {
+    pwm.setPWM(1, 0, i); //shoulder from reaching pos 1 to fully extended pos 2
+    i = i - 10;
+    delay(50);
+  }
+  for (int j=470; j>=380;){
+    pwm.setPWM(2, 0, j); //elbow from horizontal(rest/pos1) to fully extended
+    j = j-10;
+    delay(50);
+  }
+  for (int i = 210; i >= 180;) {
+    pwm.setPWM(1, 0, i); //shoulder from reaching pos 1 to fully extended pos 2
+    i = i - 10;
+    delay(50);
+  }
+  for (int j=380; j>=350;){
+    pwm.setPWM(2, 0, j); //elbow from horizontal(rest/pos1) to fully extended
+    j = j-10;
+    delay(50);
+  }
+  for (int i = 318; i >= 250;) {
+    pwm.setPWM(4, 0, i); //gripper from close to open
+    i = i - 10;
+    delay(100);
+  }
+  delay(2000);
 
-delay(1000);
-pwm.setPWM(4, 0, 240); //gripper open
-delay(1000);
-pwm.setPWM(4, 0, 280); //gripper mid 
-delay(1000);
-pwm.setPWM(4, 0, 318); //gripper close
-delay(1000);
+//arm should now move gripper back horizontally back to position 1 with open gripper
+  for (int i = 400; i <= 460;) {
+    pwm.setPWM(3, 0, i); //wrist from fully extended pos 2 to reaching pos1
+    i = i + 10;
+    delay(50);
+  }
+  for (int i = 190; i <= 220;) {
+    pwm.setPWM(1, 0, i); //shoulder from fully extended pos 2 to reaching pos 1
+    i = i + 10;
+    delay(50);
+  }
+  for (int j=400; j<=470;){
+    pwm.setPWM(2, 0, j); //elbow from fully extended to horizontal(rest/pos1)
+    j = j+10;
+    delay(50);
+  }
+delay(500);
 
-
+  //arm returns to rest position
+   for (int i = 220; i <= 380;) {
+    pwm.setPWM(1, 0, i); //shoulder from reaching (pos 1) to (obtuse angle) rest
+    i = i + 10;
+    delay(50);
+  }
+  for (int i = 130; i <= 290;) {
+    pwm.setPWM(0, 0, i); //moving from perpendicular to car to over car
+    i = i + 10;
+    delay (50);
+  }
+  for (int i = 460; i >= 350;) {
+    pwm.setPWM(3, 0, i); //wrist from position 1 to rest
+    i = i - 10;
+    delay(50);
+  }
 }
-
-
-
-//void rest(){
-//
-//int rest[] = {120, 380};
-//
-//for(int i = 0; i > 1; i++){
-//  
-//pulselen = rest[i];
-//pwm.setPWM(i, 0, pulselen);
-//delay(10);
-//}
-//}
-//
-//void pos1(){
-//
-//int pos1[] = {290, 120};
-//
-//for(int j = 0; j > 1; j++){
-//pulselen = pos1[j];
-//pwm.setPWM(j, 0, pulselen);
-//delay(10);
-//}
-//}
-//
-//void pos2 (){
-//
-//}
-//
-//void passpick(){
-//
-//}
-//
-//void passdrop(){
-//
-//}
-//}
 
