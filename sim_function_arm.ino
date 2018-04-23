@@ -43,7 +43,7 @@ void rest_pos1(){
     i = i - 10;
     delay (50);
   }
-  for (int i = 300; i <= 460;) {
+  for (int i = 290; i <= 460;) {
     pwm.setPWM(3, 0, i); //wrist from rest to reaching
     i = i + 10;
     delay(50);
@@ -56,57 +56,51 @@ void rest_pos1(){
 }
 
 void pos1_pos2(){
-    for (i = 0; i= 100; i++){      
-      int servo1 = i*((190-220)/100) + 220;
-      int servo2 = i*((350-470)/100) + 470; 
-      int servo3 = i*((400-460)/100) + 460;
+    for (i = 0; i <= 100; i++){  
+      int p1servo1 = 200;
+      int p1servo2 = 460;
+      int p1servo3 = 480;
+      int p2servo1 = 170;
+      int p2servo2 = 330;
+      int p2servo3 = 350; 
+       
+      float conv1 = (p2servo1 - p1servo1)/100.;
+      float conv2 = (p2servo2 - p1servo2)/100.; 
+      float conv3 = (p2servo3 - p1servo3)/100.;   
+      float servo1 = i*conv1 + p1servo1;
+      float servo2 = i*conv2 + p1servo2; 
+      float servo3 = i*conv3 + p1servo3;
 
       pwm.setPWM(1, 0 , servo1);
-      pwm.setPWM(1, 0 , servo2);
-      pwm.setPWM(1, 0 , servo3);         
+      pwm.setPWM(2, 0 , servo2);
+      pwm.setPWM(3, 0 , servo3); 
+      delay(75); 
+      Serial.print(conv1);       
     }
-    
-//    while(i >= 190 && j >=350 && k >=400)//pos1 to pos2
-//  {
-//    i = 220; //servo 1 in pos1
-//    j = 470; //servo 2 in pos1
-//    k = 460; //servo 3 in pos1
-//    
-//    i = i - ((220-190)/100);
-//    j = j - ((470-350)/100);
-//    k = k - ((460-400)/100);
-//    
-//    pwm.setPWM(1, 0 , i);
-//    pwm.setPWM(2, 0 , j);
-//    pwm.setPWM(3, 0 , k);    
-//  }
 }
 
 void pos2_pos1(){
-    for (i = 0; i= 100; i++){      
-      int servo1 = i*((220-190)/100) + 190; 
-      int servo2 = i*((470-350)/100) + 350; 
-      int servo3 = i*((460-400)/100) + 400;
+    for (j = 0; j<= 100; j++){  
+      int p1servo1 = 200;
+      int p1servo2 = 460;
+      int p1servo3 = 480;
+      int p2servo1 = 170;
+      int p2servo2 = 330;
+      int p2servo3 = 350;  
+                 
+      float conv1 = (p1servo1-p2servo1)/100.;
+      float conv2 = (p1servo2-p2servo2)/100.; 
+      float conv3 = (p1servo3-p2servo3)/100.;
+      
+      float servo1 = j*conv1 + 170; 
+      float servo2 = j*conv2 + 330; 
+      float servo3 = j*conv3 + 380;
 
       pwm.setPWM(1, 0 , servo1);
-      pwm.setPWM(1, 0 , servo2);
-      pwm.setPWM(1, 0 , servo3);         
+      pwm.setPWM(2, 0 , servo2);
+      pwm.setPWM(3, 0 , servo3); 
+      delay(75);        
     }
-  
-//    while(i <= 220 && j <=470 && k <=460)//pos2 to pos1
-//  {
-//    i = 190; //servo 1 in pos2
-//    j = 350; //servo 2 in pos2
-//    k = 400; //servo 3 in pos2
-//    
-//    i = i + ((220-190)/100);
-//    j = j + ((470-350)/100);
-//    k = k + ((460-400)/100);
-//    
-//    pwm.setPWM(1, 0 , i);
-//    pwm.setPWM(2, 0 , j);
-//    pwm.setPWM(3, 0 , k);    
-//  }  
 }
 
 void pos1_rest(){
@@ -125,7 +119,7 @@ void pos1_rest(){
     i = i + 10;
     delay(50);
   }
-  for (int i = 460; i >= 300;) {
+  for (int i = 460; i >= 290;) {
     pwm.setPWM(3, 0, i); //wrist from position 1 to rest
     i = i - 10;
     delay(50);
@@ -160,7 +154,7 @@ void pick_up(){
   pos1_pos2();
   delay(500);
   close_gripper();
-  delay(500);
+  delay(2000);
   pos2_pos1();
   delay(500);
   pos1_rest();
@@ -172,7 +166,7 @@ void drop_off(){
   pos1_pos2();
   delay(500);
   open_gripper();
-  delay(500);
+  delay(2000);
   pos2_pos1();
   delay(500);
   pos1_rest();
