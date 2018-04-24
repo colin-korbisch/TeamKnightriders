@@ -7,12 +7,38 @@ import time
 import cv2
 
 
+# global camera
+# global rawCapture
+# global DEVICE_ADDRESS
+# global isintersect
+# global dp
+# global sp
+# global radio
+class ROBOT
+	def __init__():
+	        self.radio = radioSetup()
+	        self.camera = PiCamera()
+	        self.camera.resolution = (640, 360)
+			self.camera.framerate = 30
+			self.rawCapture = PiRGBArray(camera, size=(640, 360))
+	        self.DEVICE_ADDRESS = 0x54
+
+
 # Robot Test Run
 def GoStraight(skipIntersect,nxTurn):
 	# continue going straight until you skip the correct num intersections
 	# once you do, approach the intersection until you are at the correct distance
 	# once at the correct distance, leave this state to begin your turn
 
+
+	# Define PID control constants:
+	kp = 0.5
+	kd = 0.009
+	ki = 0.00007
+
+	# Define error terms
+	oldE = 0
+	Esum = 0
 
 	UpdateMotor(8)
 	leave = False
@@ -28,13 +54,25 @@ def GoStraight(skipIntersect,nxTurn):
 	else:
 		dist = 100 # right distance
 
-
-
-	sendState(0)
 	for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
 		# Do some image processing stuff...
 		oldInt = isintersect
 		rho_out, theta_out, isintersect = readFrame(frame)
+
+		# Check for stop lights
+		# NEED TO TIGHTEN-UP THIS CONDITION
+		if not isintersect:
+			signature = lookStopLight()
+
+			if sum(np.equal(signature,1)) > 3:
+				StopCar()
+				is_stopped = True
+			else:
+				UpdateMotor(8)
+				is_stopped = False
+		else:
+			UpdateMotor(8)
+			is_stopped = False
 
 		# Counting out number of intersections
 		if numInt != skipIntersect:
@@ -86,6 +124,17 @@ def GoStraight(skipIntersect,nxTurn):
 		else:
 			ErrorSignal = 0
 
+		Esum = Esum + ErrorSignal
+		if not oldE:
+			Edif = 0
+		else:
+			Edif = ErrorSignal - oldE
+			oldE = ErrorSignal
+
+		steerContro = kp*oldE + kd*Edif + ki*Esum
+
+		UpdateSteering(11+steerContro)
+
 		#Find horz lines:
 		rotateTheta = theta_out - np.pi
 		arr1 = np.greater_equal(rotateTheta,7*np.pi/8)
@@ -93,16 +142,21 @@ def GoStraight(skipIntersect,nxTurn):
 		and_arr = np.logical_and(arr1,arr2)
 		horzLineIDs = np.where(and_arr)
 
-		# Check for stop lights
-		# NEED TO TIGHTEN-UP THIS CONDITION
-		if not isintersect:
-			signature = lookStopLight()
 
-			if sum(np.equal(signature,1)) > 3:
-				StopCar()
 
 def TurnRight():
-	sendState(1)
+	# Define PID control constants:
+	kp = 0.5
+	kd = 0.009
+	ki = 0.00007
+
+	# Define error terms
+	oldE = 0
+	Esum = 0
+
+	setpointL = 0.1571 # 9 Degrees
+	setpointR = 2.7925 # 160 Degrees
+
 	UpdateMotor(7.7)
 	isTurning = False
 	lineSkip = True
@@ -137,6 +191,37 @@ def TurnRight():
 		arr2 = np.lesser_equal(theta_out,np.pi/2)
 		and_arr = np.logical_and(arr1,arr2)
 		leftLineIDs = np.where(and_arr)
+
+
+		# Right Error:
+		if rightLineIDs[0].size:
+			RError = setpointR - np.mean(theta_out[rightLineIDs])
+
+		# Left Error:
+		if leftLineIDs[0].size:
+			LError = setpointL - np.mean(theta_out[leftLineIDs])
+
+		# Mean Error:
+		if LError:
+			if RError:
+				ErrorSignal = (LError+RError)/2
+			else:
+				ErrorSignal = LError
+		elif RError:
+			ErrorSignal = RError
+		else:
+			ErrorSignal = 0
+
+		Esum = Esum + ErrorSignal
+		if not oldE:
+			Edif = 0
+		else:
+			Edif = ErrorSignal - oldE
+			oldE = ErrorSignal
+
+		steerContro = kp*oldE + kd*Edif + ki*Esum
+		if not isTurning:
+			UpdateSteering(11+steerContro)
 
 		if isTurning:
 			# Continue turn until a line around 45deg crosses the frame
@@ -321,6 +406,27 @@ def UpdateSteering(newDC):
 	# 13% is Right
 	sp.ChangeDutyCycle(newDC)
 
+def lookStopLight():
+	out = []
+	i = 0
+	while i < 4
+		word = bus.read_word_data(DEVICE_ADDRESS, 0)
+			if word == 0xaa55:
+				i += 1
+				word = bus.read_word_data(DEVICE_ADDRESS, 1)
+				if word == 0xaa56 or word == 0xaa55:
+					checksum = bus.read_word_data(DEVICE_ADDRESS, 2)
+					signature = bus.read_word_data(DEVICE_ADDRESS, 3)
+					xctr = bus.read_word_data(DEVICE_ADDRESS, 4)
+					yctr = bus.read_word_data(DEVICE_ADDRESS, 5)
+					width = bus.read_word_data(DEVICE_ADDRESS, 6)
+					height = bus.read_word_data(DEVICE_ADDRESS, 7)
+					out.append(float(signature))
+	return out
+
+def StopCar():
+	UpdateMotor(5)
+
 # Initialize Robot and Passenger Locations:
 # outpath, outcommands = UpdateMap(1)
 outcommands = ['R','S1']
@@ -390,6 +496,8 @@ while run_robot:
 		if outpath:
 			curLoc = outpath.pop()
 			move_complete = False
+		if not outcommands and not outpath:
+			run_robot = False
 
 	# if curLoc == 13 and not is_pickup:
 		# PsngerPickup()

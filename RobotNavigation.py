@@ -15,7 +15,7 @@ def TurnLeft():
 
 def TurnRight():
 	sendState(1)
-	UpdateMotor(2)
+	UpdateMotor(7.7)
 	isTurning = False
 	lineSkip = True
 	checkComplete = False
@@ -67,12 +67,12 @@ def TurnRight():
 			UpdateSteering(11)
 			break
 
-
 def UpdateMap(pickup):
 	# This has been commented out for the dry-run around the perimeter
-	rad_Data = []
+
 	robotLoc = []
 	psngrLoc = []
+	destLoc = []
 	# if pickup:
 		# while not robotLoc and not psngrLoc:
 		# 	rad_Data = getRadioSignal()
@@ -96,12 +96,12 @@ def UpdateMap(pickup):
 	return outpath, outcommands
 
 def PollCurLoc():
-	robotLoc = []
-	while not robotLoc:
-		rad_Data = getRadioSignal()
-		data = rad_Data.split(" ")
-		data
-	robNode = pixel2node(robotLoc)
+	# robotLoc = []
+	# while not robotLoc:
+	robPos, psPos, destPos = getRadioSignal()
+	# 	data = rad_Data.split(" ")
+	# 	data
+	# robNode = pixel2node(robotLoc)
 
 def sendState(stateIndex):
 	#send the stateID to Arduino
@@ -130,7 +130,7 @@ def GoStraight(skipIntersect,nxTurn):
 	# once at the correct distance, leave this state to begin your turn
 
 
-	UpdateMotor(12)
+	UpdateMotor(8)
 	leave = False
 	numInt = 0
 	isintersect = False
@@ -377,6 +377,9 @@ def readFrameRight(frame):
 	return rho_out, theta_out, distance
 
 def UpdateMotor(newDC):
+	# Reverse ~ 6%
+	# Neurtral ~ 7.5%
+	# Forward ~ 9%
 	dp.ChangeDutyCycle(newDC)
 
 def UpdateSteering(newDC):
@@ -401,11 +404,13 @@ global DEVICE_ADDRESS
 global isintersect
 global dp
 global sp
+global radio
 
 camera = PiCamera()
 camera.resolution = (640, 360)
 camera.framerate = 30
 rawCapture = PiRGBArray(camera, size=(640, 360))
+radio = radioSetup()
 
 # startup Pixy Camera I2C Comm
 bus = smbus.SMBus(1)

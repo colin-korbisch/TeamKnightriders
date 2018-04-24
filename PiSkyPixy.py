@@ -5,54 +5,55 @@ from RFM69registers import *
 import datetime
 import time
 
-
-def getRadioSignal():
-	NODE=1
+def radioSetup():
+	NODE=2
 	NET=10
 	KEY="TOPSECRETPASSWD"
-	TIMEOUT=3
+	TIMEOUT=5
 	TOSLEEP=0.1
 
 	radio = RFM69.RFM69(RF69_915MHZ, NODE, NET, True)
-	print "class initialized"
+	# print "class initialized"
 
-	print "reading all registers"
+	# print "reading all registers"
 	results = radio.readAllRegs()
 	#for result in results:
-	#    print result
+	#	print result
 
-	print "Performing rcCalibration"
+	# print "Performing rcCalibration"
 	radio.rcCalibration()
 
-	print "setting high power"
+	# print "setting high power"
 	radio.setHighPower(True)
 
-	print "Checking temperature"
-	print radio.readTemperature(0)
+	return radio
 
-	# print "setting encryption"
-	# radio.encrypt(KEY)
+def getRadioSignal(radio):
 
+	# print "start recv"
+	radio.receiveBegin()
+	timedOut=0
+	while not radio.receiveDone():
+		timedOut+=TOSLEEP
+		time.sleep(TOSLEEP)
+		if timedOut > TIMEOUT:
+			return -1, -1, -1
+			break
+	
 
-    print "start recv..."
-    radio.receiveBegin()
-    timedOut=0
-    while not radio.receiveDone():
-        timedOut+=TOSLEEP
-        time.sleep(TOSLEEP)
-	if timedOut > TIMEOUT:
-            print "timed out waiting for recv"
-            break
+	# print "end recv..."
+	# print " *** %s from %s RSSI:%s" % ("".join([chr(letter) for letter in radio.DATA]), radio.SENDERID, radio.RSSI)
+	posData = "".join([chr(letter) for letter in radio.DATA])
+	# print posData
+	robData, psngrData, destData = posData.split("|")
+	# print robData
+	# print psngrData
+	# print destData
 
-    print "end recv..."
-    print " *** %s from %s RSSI:%s" % ("".join([chr(letter) for letter in radio.DATA]), radio.SENDERID, radio.RSSI)
+	return robData, psngrData, destData
 
-    if radio.ACKRequested():
-        print "sending ack..."
-        radio.sendACK()
-    else:
-        print "ack not requested..."
-
-	print "shutting down"
-	radio.shutdown()
-	return radio.DATA
+if __name__ == "__main__":
+	while True:
+		radio = radioSetup()
+		data1, data2, data3 = getRadioSignal(radio)
+		print data1
