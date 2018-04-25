@@ -25,9 +25,11 @@ void setup()
   pwm.setPWM(4, 0, 250); //gripper open
   delay(500);
   pwm.setPWM(0, 0, 290); //positioned over car
-  delay(3000);
+  
+  //set pixie servo facing forward
+   pwm.setPWM(5, 0, 250); 
 
-
+   delay(3000);
 }
 
 void loop() {
@@ -147,8 +149,19 @@ void close_gripper(){
   }    
 }
 
+void pixie_fwd(){
+   pwm.setPWM(5, 0, 250);   
+}
+
+void pixie_passenger(){
+  
+   pwm.setPWM(5, 0, 500); 
+}
+
 //declaring pick up and drop off functions 
 void pick_up(){
+  pixie_passenger();
+  delay(500);
   rest_pos1();
   delay(500);
   pos1_pos2();
@@ -158,9 +171,12 @@ void pick_up(){
   pos2_pos1();
   delay(500);
   pos1_rest();
+  pixie_fwd();
 }
 
 void drop_off(){
+  pixie_passenger();
+  delay(500);
   rest_pos1();
   delay(500);
   pos1_pos2();
@@ -170,6 +186,7 @@ void drop_off(){
   pos2_pos1();
   delay(500);
   pos1_rest();
+  pixie_fwd();
 }
 
 
