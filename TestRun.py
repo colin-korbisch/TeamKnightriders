@@ -26,12 +26,10 @@ import cv2
 
 # Robot Test Run
 def GetErrorSignal(theta_out):
-	setpointL = 0 * np.pi/180 # 3 Degrees
-	setpointR = 170 * np.pi/180 # 169.5 Degrees
-
-
-	LError = []
-	RError = []
+        setpointL = 0*np.pi/180
+        setpointR = 170*np.pi/180
+        LError = []
+        RError = []
 	#Find right lines:
 	arr1 = np.greater_equal(theta_out,7*np.pi/8)
 	arr2 = np.less_equal(theta_out,np.pi)
@@ -163,7 +161,26 @@ def GoStraight(skipIntersect,nxTurn):
 
 		if curTime-startTime >= 0.1:
 			EsigHistory.append(EsignalM)
-			StraightLineControl(EsigHistory)
+
+
+			# Finite Difference Derivative
+			if len(EsigHistory) >=3:
+				terms = EsigHistory[-3:]
+				Edif = 1.5*terms[-1]-2*terms[-2]+0.5*terms[-3]
+			elif len(EsigHistory) == 2:
+				Edif = EsigHistory[-1] - EsigHistory[-2]
+			else:
+				Edif = EsigHistory[-1]
+
+			# Esum = Esum + EsignalM
+			def integrate (f,a,b,N)):
+				x = np.linspace(a+(b-a)/(2*N),b-(b-a)/(2*N),N, True)
+				fx = f(x)
+				area = np.sum(fx)*(b-a)/N
+				return area
+			integrate (EsigHistory(0),EsigHistory(-1),len(EsigHistory))
+
+			steerContro = kp*EsigHistory[-1] + kd*Edif + ki*Esum
 			startTime = time.time()
 		else:
 			UpdateMotor(7.87)
