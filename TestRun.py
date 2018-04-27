@@ -174,7 +174,13 @@ def GoStraight(skipIntersect,nxTurn):
 			else:
 				Edif = EsigHistory[-1]
 
-			Esum = Esum + EsignalM
+			# Esum = Esum + EsignalM
+			def integrate (f,a,b,N)):
+				x = np.linspace(a+(b-a)/(2*N),b-(b-a)/(2*N),N, True)
+				fx = f(x)
+				area = np.sum(fx)*(b-a)/N
+				return area
+			integrate (EsigHistory(0),EsigHistory(-1),len(EsigHistory))
 
 			steerContro = kp*EsigHistory[-1] + kd*Edif + ki*Esum
 			startTime = time.time()
