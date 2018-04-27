@@ -20,11 +20,11 @@ rawCapture = PiRGBArray(camera, size=(1280, 720))
 
 cv2.namedWindow('image')
 cv2.resizeWindow('image',300,300)
-cv2.createTrackbar('Hue', 'image', 141, 255, nothing)
-cv2.createTrackbar('Sat', 'image', 18, 255, nothing)
-cv2.createTrackbar('Val', 'image', 97, 255, nothing)
-cv2.createTrackbar('HueU', 'image', 170, 179, nothing)
-cv2.createTrackbar('SatU', 'image', 250, 255, nothing)
+cv2.createTrackbar('Hue', 'image', 0, 255, nothing)
+cv2.createTrackbar('Sat', 'image', 0, 255, nothing)
+cv2.createTrackbar('Val', 'image', 0, 255, nothing)
+cv2.createTrackbar('HueU', 'image', 255, 255, nothing)
+cv2.createTrackbar('SatU', 'image', 255, 255, nothing)
 cv2.createTrackbar('ValU', 'image', 255, 255, nothing)
  
 
@@ -52,15 +52,22 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 
 	cv2.namedWindow("Road",cv2.WINDOW_NORMAL)
 	cv2.resizeWindow("Road",300,300)
+	hue = cv2.getTrackbarPos('Hue', 'image')
+	sat = cv2.getTrackbarPos('Sat', 'image')
+	val = cv2.getTrackbarPos('Val', 'image')
+	hueU = cv2.getTrackbarPos('HueU', 'image')
+	satU = cv2.getTrackbarPos('SatU', 'image')
+	valU = cv2.getTrackbarPos('ValU', 'image')
+
+	lbPurp = np.array([hue,sat,val])
+	ubPurp = np.array([hueU,satU,valU])
 	# NEW BOUNDS FOUND FROM VIDEO:
 	
-	lowboundsYellow = np.array([15,51,34])
-	upboundsYellow = np.array([34,248,220])
-
-	lbPurp = np.array([141,18,97])
-	ubPurp = np.array([170,250,255])
-	# lbPurp = np.array([hue,sat,val])
-	# ubPurp = np.array([hueU,satU,valU])
+	lowboundsYellow = np.array([25,29,60])
+	upboundsYellow = np.array([28,236,255])
+	
+	# lbPurp = np.array([141,18,97])
+	# ubPurp = np.array([170,112,143])
 
 	maskY = cv2.inRange(display, lowboundsYellow, upboundsYellow)
 	maskP = cv2.inRange(display, lbPurp, ubPurp)
@@ -73,47 +80,27 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 	edges = cv2.Canny(gray,50,150,apertureSize = 3)
 	lines = []
 	lines = cv2.HoughLines(edges,0.5,np.pi/180,36)
-	Llines = cv2.HoughLines(edges[:,0:75],0.5,np.pi/180,20)
-	Rlines = cv2.HoughLines(edges[:,76:150],0.5,np.pi/180,20)
-	cv2.line(imgSmall,(75,0),(75,150),[0,0,255],2)
-	print "Left Lines:", Llines
-	print "Right Lines:", Rlines
-
-	if np.any(Llines):
-		for line in Llines:
+	if np.any(lines):
+		for line in lines:
 			line = line[0]
-			print "Left Lane Angle:", line[1]
-
-	if np.any(Rlines):
-		for line in Rlines:
-			line = line[0]
-			print "Right Lane Angles", line[1]
-	# if np.any(lines):
-	# 	for line in lines:
-	# 		line = line[0]
-	# 		rho = line[0]
-	# 		theta = line[1]
-	# 		print theta*180/np.pi
-	# 		a = np.cos(theta)
-	# 		b = np.sin(theta)
-	# 		x0 = a*rho
-	# 		y0 = b*rho
-	# 		x1 = int(x0 + 100*(-b))
-	# 		x2 = int(x0 - 100*(-b))
-	# 		y1 = int(y0 + 100*a)
-	# 		y2 = int(y0 - 100*a)
-	# 		color_horz = [0,0,255]
-	# 		color_R = [255,0,0]
-	# 		color_L = [0,255,0]
-	# 		if abs(theta) <= np.pi/2 + 0.005 and abs(theta) >= np.pi/2 - 0.005:
-	# 			colorLine = color_horz #horz line should be red line
-	# 		elif abs(theta) >= 0 and abs(theta) <= np.pi/8:
-	# 			colorLine = color_L
-	# 		elif abs(theta) >= 7*np.pi/8 and abs(theta) <= np.pi:
-	# 			colorLine = color_R
-	# 		else:
-	# 			colorLine = [255,255,0]
-	# 		cv2.line(imgSmall,(x1,y1),(x2,y2),colorLine,2)
+			rho = line[0]
+			theta = line[1]
+			print theta*180/np.pi
+			a = np.cos(theta)
+			b = np.sin(theta)
+			x0 = a*rho
+			y0 = b*rho
+			x1 = int(x0 + 100*(-b))
+			x2 = int(x0 - 100*(-b))
+			y1 = int(y0 + 100*a)
+			y2 = int(y0 - 100*a)
+			color_horz = [0,0,255]
+			color_lane = [255,0,0]
+			if abs(theta) <= np.pi/2 + 0.01 and abs(theta) >= np.pi/2 - 0.01:
+				colorLine = color_horz #horz line should be red line
+			else:
+				colorLine = color_lane
+			cv2.line(imgSmall,(x1,y1),(x2,y2),colorLine,2)
 
 #linesP = cv2.HoughLinesP(maskTot,1,np.pi/180,50,30,6)
 #for line in linesP:

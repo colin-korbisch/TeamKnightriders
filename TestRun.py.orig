@@ -25,49 +25,55 @@ import cv2
 
 
 # Robot Test Run
-def GetErrorSignal(theta_out,leftBool):
-	# if np.any(theta_out >= np.pi/2):
-	# 	theta_out = theta_out - np.pi
+def GetErrorSignal(theta_out):
+	setpointL = 0 * np.pi/180 # 3 Degrees
+	setpointR = 170 * np.pi/180 # 169.5 Degrees
 
-	setpointL = 3*np.pi/180
-	setpointR = 171*np.pi/180
+
 	LError = []
 	RError = []
+	#Find right lines:
+	arr1 = np.greater_equal(theta_out,7*np.pi/8)
+	arr2 = np.less_equal(theta_out,np.pi)
+	and_arr = np.logical_and(arr1,arr2)
+	rightLineIDs = np.where(and_arr)
 
-	if not leftBool:
-		#Find right lines:
-		arr1 = np.greater_equal(theta_out,7*np.pi/8)
-		arr2 = np.less_equal(theta_out,np.pi)
-		and_arr = np.logical_and(arr1,arr2)
-		rightLineIDs = np.where(and_arr)
+	# Right Error:
+	if rightLineIDs[0].size:
+		RError = setpointR - np.mean(theta_out[rightLineIDs])
 
-		# Right Error:
-		if rightLineIDs[0].size:
-			RError = setpointR - np.mean(theta_out[rightLineIDs])
-		else:
-			RError = None
+	#Find left lines:
+	arr1 = np.greater_equal(theta_out,0)
+	arr2 = np.less_equal(theta_out,np.pi/8)
+	and_arr = np.logical_and(arr1,arr2)
+	leftLineIDs = np.where(and_arr)
 
-		return RError
+	# Left Error:
+	if leftLineIDs[0].size:
+		LError = setpointL - np.mean(theta_out[leftLineIDs])
 	else:
-			#Find left lines:
-		arr1 = np.greater_equal(theta_out,0)
-		arr2 = np.less_equal(theta_out,np.pi/8)
-		and_arr = np.logical_and(arr1,arr2)
-		leftLineIDs = np.where(and_arr)
+		LError = -15
 
-		# Left Error:
-		if leftLineIDs[0].size:
-			LError = setpointL - np.mean(theta_out[leftLineIDs])
+	# Mean Error:
+	if LError:
+		if RError:
+			ErrorSignal = (LError+RError)/2
 		else:
-			LError = 0.0048
-			UpdateMotor(7.87)
-		return LError
+			ErrorSignal = LError
+	elif RError:
+		ErrorSignal = RError
+	else:
+		ErrorSignal = 0
+
+	return ErrorSignal
+
+
 
 def StraightLineControl(EsigHistory):
 	# Define PID control constants:
-	kp = 190
-	kd = 89
-	ki = 1.55
+	kp = 850
+	kd = 85
+	ki = 1.7
 
 		# Finite Difference Derivative
 	if len(EsigHistory) >=3:
@@ -78,29 +84,24 @@ def StraightLineControl(EsigHistory):
 	else:
 		Edif = EsigHistory[-1]
 	# Integral Term Goes Here:
-	Esum = np.trapz(EsigHistory)
 
 
 	steerContro = kp*EsigHistory[-1] + kd*Edif + ki*Esum
-	UpdateSteering(10.8,steerContro)
-	if 9-0.008*abs(steerContro) <= 7.95:
-		UpdateMotor(7.885)
-	else:
-		UpdateMotor(9-0.008*abs(steerContro))
+	UpdateSteering(11.02,steerContro)
+	UpdateMotor(8-0.0004*abs(steerContro))
 
 def GoStraight(skipIntersect,nxTurn):
 	# continue going straight until you skip the correct num intersections
 	# once you do, approach the intersection until you are at the correct distance
 	# once at the correct distance, leave this state to begin your turn
 	EsigHistory = []
-	EsignalM = 0
 	
 	startTime = time.time()
 	print "going straight"
 
 	UpdateMotor(7.88)
 	time.sleep(0.25)
-	UpdateMotor(7.88)
+	UpdateMotor(7.86)
 
 	leave = False
 	numInt = 0
@@ -112,8 +113,8 @@ def GoStraight(skipIntersect,nxTurn):
 	for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
 		# Do some image processing stuff...
 		oldInt = isintersect
-		rho_out, theta_out, theta_outL,theta_outR, isintersect = readFrame(frame, isintersect)
-		# print "Intersection State:" ,isintersect
+		rho_out, theta_out, isintersect = readFrame(frame, isintersect)
+		print isintersect
 		rawCapture.truncate(0)
 		# Check for stop lights
 		# NEED TO TIGHTEN-UP THIS CONDITION
@@ -131,8 +132,8 @@ def GoStraight(skipIntersect,nxTurn):
 		# 	is_stopped = False
 
 		# Counting out number of intersections
-		# print "Numb of Inter Passed:", numInt
-		# print "Numb of Int to Skip: ", skipIntersect
+		print "Numb of Inter Passed:", numInt
+		print "Numb of Int to Skip: ", skipIntersect
 		if numInt != skipIntersect:
 			if isintersect and not oldInt:
 				enterInt = True
@@ -140,32 +141,19 @@ def GoStraight(skipIntersect,nxTurn):
 				leaveInt = True
 				enterInt = False
 				numInt = numInt + 1
-			# print "Did Enter Int?", enterInt
-			# print "Did Leave Int?", leaveInt
+			print "Did Enter Int?", enterInt
+			print "Did Leave Int?", leaveInt
 		else:
 			print "Entering Turn Mode"
 			break
 
-		if not isinstance(theta_outL,np.ndarray):
-			theta_outL = np.array(theta_outL)
-		if not isinstance(theta_outR,np.ndarray):
-			theta_outR = np.array(theta_outR)
+		if not isinstance(theta_out,np.ndarray):
+			theta_out = np.array(theta_out)
 		if not isinstance(rho_out,np.ndarray):
 			rho_out = np.array(rho_out)		
 
-		LError = GetErrorSignal(theta_outL,1)
-		RError = GetErrorSignal(theta_outR,0)
-		# if LError < 0:
-		# 	LError = LError - 0.05
-
-		print "Left Lane Error:", LError
-		print "Right Lane Error:", RError
-		# Mean Error:
-		if RError:
-			ErrorSignal = (LError+RError)/2.
-		else:
-			ErrorSignal = LError
-
+		ErrorSignal = GetErrorSignal(theta_out)
+		
 		curTime = time.time()
 		# print oldE, Edif, Esum
 		# oldEM  = (oldE+oldEM)/2.
@@ -175,17 +163,40 @@ def GoStraight(skipIntersect,nxTurn):
 
 		if curTime-startTime >= 0.1:
 			EsigHistory.append(EsignalM)
+<<<<<<< HEAD
 			StraightLineControl(EsigHistory)
+=======
+
+
+			# Finite Difference Derivative
+			if len(EsigHistory) >=3:
+				terms = EsigHistory[-3:]
+				Edif = 1.5*terms[-1]-2*terms[-2]+0.5*terms[-3]
+			elif len(EsigHistory) == 2:
+				Edif = EsigHistory[-1] - EsigHistory[-2]
+			else:
+				Edif = EsigHistory[-1]
+
+			# Esum = Esum + EsignalM
+			def integrate (f,a,b,N)):
+				x = np.linspace(a+(b-a)/(2*N),b-(b-a)/(2*N),N, True)
+				fx = f(x)
+				area = np.sum(fx)*(b-a)/N
+				return area
+			integrate (EsigHistory(0),EsigHistory(-1),len(EsigHistory))
+
+			steerContro = kp*EsigHistory[-1] + kd*Edif + ki*Esum
+>>>>>>> 6e96de606eeea75d4d722de211cc78620362e329
 			startTime = time.time()
 		else:
-			UpdateMotor(7.9)
-			time.sleep(0.1)
+			UpdateMotor(7.87)
 
 		#Find horz lines:
-		# arr1 = np.greater_equal(rotateTheta,7*np.pi/8)
-		# arr2 = np.less_equal(rotateTheta,np.pi/8)
-		# and_arr = np.logical_and(arr1,arr2)
-		# horzLineIDs = np.where(and_arr)
+		rotateTheta = theta_out - np.pi
+		arr1 = np.greater_equal(rotateTheta,7*np.pi/8)
+		arr2 = np.less_equal(rotateTheta,np.pi/8)
+		and_arr = np.logical_and(arr1,arr2)
+		horzLineIDs = np.where(and_arr)
 
 def TurnRight():
 	print "Turning Right"
@@ -274,8 +285,6 @@ def readFrame(frame, isintersect):
 		return isintersect
 
 	rho_out = []
-	theta_outL = []
-	theta_outR = []
 	theta_out = []
 	intersectDetectRow = 10 # need to test this constant
 
@@ -285,8 +294,8 @@ def readFrame(frame, isintersect):
 	# lowboundsYellow = np.array([10,59,67])
 	# upboundsYellow = np.array([39,229,219])
 
-	lowboundsYellow = np.array([15,51,34])
-	upboundsYellow = np.array([34,248,220])
+	lowboundsYellow = np.array([23,28,50])
+	upboundsYellow = np.array([28,248,220])
 
 	lbPurp = np.array([141,18,97])
 	ubPurp = np.array([170,250,255])
@@ -301,23 +310,7 @@ def readFrame(frame, isintersect):
 
 	edges = cv2.Canny(gray,50,150,apertureSize = 3)
 
-	lines = cv2.HoughLines(edges,0.5,np.pi/180,35)
-	leftLines = cv2.HoughLines(edges[:,0:75],0.5,np.pi/180,20)
-	rightLines = cv2.HoughLines(edges[:,76:150],0.5,np.pi/180,20)
-	if np.any(leftLines != None):
-		for line in leftLines:
-			line = line[0]
-			rho = line[0]
-			theta = line[1]
-			rho_out.append(rho)
-			theta_outL.append(theta)
-	if np.any(rightLines != None):
-		for line in rightLines:
-			line = line[0]
-			rho = line[0]
-			theta = line[1]
-			rho_out.append(rho)
-			theta_outR.append(theta)
+	lines = cv2.HoughLines(edges,0.5,np.pi/180,39)
 	if np.any(lines != None):
 		for line in lines:
 			line = line[0]
@@ -343,9 +336,8 @@ def readFrame(frame, isintersect):
 	elif sum([l1,l2,l3]) < 1 and isintersect:
 		isintersect = False
 
-	print "Left Lane Angles:", theta_outL
-	print "Right Lane Angles:", theta_outR
-	return rho_out, theta_out, theta_outL, theta_outR, isintersect
+
+	return rho_out, theta_out, isintersect
 
 def readFrameRight(frame):
 	def interDetect(mask,row,isintersect):
@@ -419,14 +411,10 @@ def readFrameRight(frame):
 	return rho_out, theta_out, distance
 
 def UpdateMotor(newDC):
-	speedLimit = 7.95
 	# Reverse ~ 7.14%
 	# Neurtral ~ 7.5%
 	# Forward ~ 7.8%
-	if newDC > speedLimit:
-		newDC = speedLimit
 	dp.ChangeDutyCycle(newDC)
-	time.sleep(0.1)
 
 def UpdateSteering(neutral, controlSign):
 	# 9% is Left
@@ -438,7 +426,7 @@ def UpdateSteering(neutral, controlSign):
 	else:
 		newDC = neutral - controlSign
 	sp.ChangeDutyCycle(newDC)
-	print "New Steering DC:" ,newDC
+	print newDC
 	time.sleep(0.5)
 
 def lookStopLight():
