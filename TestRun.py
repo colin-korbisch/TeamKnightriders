@@ -25,26 +25,79 @@ import cv2
 
 
 # Robot Test Run
-def GoStraight(skipIntersect,nxTurn):
-	# continue going straight until you skip the correct num intersections
-	# once you do, approach the intersection until you are at the correct distance
-	# once at the correct distance, leave this state to begin your turn
-	startTime = time.time()
-	print "going straight"
+def GetErrorSignal(theta_out):
+	setpointL = 0 * np.pi/180 # 3 Degrees
+	setpointR = 170 * np.pi/180 # 169.5 Degrees
 
+
+	LError = []
+	RError = []
+	#Find right lines:
+	arr1 = np.greater_equal(theta_out,7*np.pi/8)
+	arr2 = np.less_equal(theta_out,np.pi)
+	and_arr = np.logical_and(arr1,arr2)
+	rightLineIDs = np.where(and_arr)
+
+	# Right Error:
+	if rightLineIDs[0].size:
+		RError = setpointR - np.mean(theta_out[rightLineIDs])
+
+	#Find left lines:
+	arr1 = np.greater_equal(theta_out,0)
+	arr2 = np.less_equal(theta_out,np.pi/8)
+	and_arr = np.logical_and(arr1,arr2)
+	leftLineIDs = np.where(and_arr)
+
+	# Left Error:
+	if leftLineIDs[0].size:
+		LError = setpointL - np.mean(theta_out[leftLineIDs])
+	else:
+		LError = -15
+
+	# Mean Error:
+	if LError:
+		if RError:
+			ErrorSignal = (LError+RError)/2
+		else:
+			ErrorSignal = LError
+	elif RError:
+		ErrorSignal = RError
+	else:
+		ErrorSignal = 0
+
+	return ErrorSignal
+
+
+
+def StraightLineControl(EsigHistory):
 	# Define PID control constants:
 	kp = 850
 	kd = 85
 	ki = 1.7
 
-	# Define error terms
-	Esum = 0
-	EsigHistory = []
+		# Finite Difference Derivative
+	if len(EsigHistory) >=3:
+		terms = EsigHistory[-3:]
+		Edif = 1.5*terms[-1]-2*terms[-2]+0.5*terms[-3]
+	elif len(EsigHistory) == 2:
+		Edif = EsigHistory[-1] - EsigHistory[-2]
+	else:
+		Edif = EsigHistory[-1]
+	# Integral Term Goes Here:
 
-	EdifM = 0
-	EsumM = 0
-	oldEM = 0
-	EsignalM = 0
+
+	steerContro = kp*EsigHistory[-1] + kd*Edif + ki*Esum
+	UpdateSteering(11.02,steerContro)
+	UpdateMotor(8-0.0004*abs(steerContro))
+
+def GoStraight(skipIntersect,nxTurn):
+	# continue going straight until you skip the correct num intersections
+	# once you do, approach the intersection until you are at the correct distance
+	# once at the correct distance, leave this state to begin your turn
+	EsigHistory = []
+	
+	startTime = time.time()
+	print "going straight"
 
 	UpdateMotor(7.88)
 	time.sleep(0.25)
@@ -56,15 +109,6 @@ def GoStraight(skipIntersect,nxTurn):
 	enterInt = False
 	leaveInt = True
 	oldInt = False
-
-	setpointL = 0 * np.pi/180 # 3 Degrees
-	setpointR = 170 * np.pi/180 # 169.5 Degrees
-
-	# if nxTurn == 'L':
-	# 	dist = #Ldistance
-	# else:
-	# 	dist = 100 # right distance
-
 
 	for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
 		# Do some image processing stuff...
@@ -108,51 +152,7 @@ def GoStraight(skipIntersect,nxTurn):
 		if not isinstance(rho_out,np.ndarray):
 			rho_out = np.array(rho_out)		
 
-		LError = []
-		RError = []
-		#Find right lines:
-		arr1 = np.greater_equal(theta_out,7*np.pi/8)
-		arr2 = np.less_equal(theta_out,np.pi)
-		and_arr = np.logical_and(arr1,arr2)
-		rightLineIDs = np.where(and_arr)
-
-		# Right Error:
-		if rightLineIDs[0].size:
-			RError = setpointR - np.mean(theta_out[rightLineIDs])
-
-		#Find left lines:
-		arr1 = np.greater_equal(theta_out,0)
-		arr2 = np.less_equal(theta_out,np.pi/8)
-		and_arr = np.logical_and(arr1,arr2)
-		leftLineIDs = np.where(and_arr)
-
-		# Left Error:
-		if leftLineIDs[0].size:
-			LError = setpointL - np.mean(theta_out[leftLineIDs])
-		else:
-			LError = -10
-		
-
-		imgini = frame.array
-		cv2.namedWindow("Road",cv2.WINDOW_NORMAL)
-		imgSmall = cv2.resize(imgini,(150,150),cv2.INTER_AREA)
-		print "Show Image"
-		cv2.imshow('Road',imgSmall)
-
-
-		#Run Error Correct at 10 Hz w/ rolling mean for above calulations(?)
-
-		# Mean Error:
-		# print "determining line errors"
-		if LError:
-			if RError:
-				ErrorSignal = (LError+RError)/2
-			else:
-				ErrorSignal = LError
-		elif RError:
-			ErrorSignal = RError
-		else:
-			ErrorSignal = 0
+		ErrorSignal = GetErrorSignal(theta_out)
 		
 		curTime = time.time()
 		# print oldE, Edif, Esum
@@ -163,24 +163,8 @@ def GoStraight(skipIntersect,nxTurn):
 
 		if curTime-startTime >= 0.1:
 			EsigHistory.append(EsignalM)
-
-
-			# Finite Difference Derivative
-			if len(EsigHistory) >=3:
-				terms = EsigHistory[-3:]
-				Edif = 1.5*terms[-1]-2*terms[-2]+0.5*terms[-3]
-			elif len(EsigHistory) == 2:
-				Edif = EsigHistory[-1] - EsigHistory[-2]
-			else:
-				Edif = EsigHistory[-1]
-
-			Esum = Esum + EsignalM
-
-			steerContro = kp*EsigHistory[-1] + kd*Edif + ki*Esum
+			StraightLineControl(EsigHistory)
 			startTime = time.time()
-			# print steerContro
-			UpdateSteering(11.02,steerContro)
-			UpdateMotor(8-0.0004*abs(steerContro))
 		else:
 			UpdateMotor(7.87)
 
@@ -191,28 +175,19 @@ def GoStraight(skipIntersect,nxTurn):
 		and_arr = np.logical_and(arr1,arr2)
 		horzLineIDs = np.where(and_arr)
 
-
-
 def TurnRight():
-	# Define PID control constants:
-	kp = 0.5
-	kd = 0.009
-	ki = 0.00007
+	print "Turning Right"
+	EsigHistory = []
+	EsignalM = 0
 
-	# Define error terms
-	oldE = 0
-	Esum = 0
-
-	setpointL = 0.05236 # 3 Degrees
-	setpointR = 2.95833 # 169.5 Degreessc
-
-	UpdateMotor(7.71)
+	UpdateMotor(7.7)
 	isTurning = False
 	lineSkip = True
 	checkComplete = False
+	startTime = time.time()
 
 	for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-		
+		curTime = time.time()
 		# Do some image processing stuff...
 
 		rho_out, theta_out, distancePx = readFrameRight(frame,True)
@@ -230,48 +205,15 @@ def TurnRight():
 		if not isinstance(rho_out,np.ndarray):
 			rho_out = np.array(rho_out)		
 
-		#Find right lines:
-		arr1 = np.greater_equal(theta_out,np.pi/2)
-		arr2 = np.less_equal(theta_out,3*np.pi/4)
-		and_arr = np.logical_and(arr1,arr2)
-		rightLineIDs = np.where(and_arr)
+		ErrorSignal = GetErrorSignal(theta_out)
+		EsignalM = (EsignalM+ErrorSignal)/2.
+		
 
-		#Find left lines:
-		arr1 = np.greater_equal(theta_out,np.pi/4)
-		arr2 = np.less_equal(theta_out,np.pi/2)
-		and_arr = np.logical_and(arr1,arr2)
-		leftLineIDs = np.where(and_arr)
-
-
-		# Right Error:
-		if rightLineIDs[0].size:
-			RError = setpointR - np.mean(theta_out[rightLineIDs])
-
-		# Left Error:
-		if leftLineIDs[0].size:
-			LError = setpointL - np.mean(theta_out[leftLineIDs])
-
-		# Mean Error:
-		if LError:
-			if RError:
-				ErrorSignal = (LError+RError)/2
-			else:
-				ErrorSignal = LError
-		elif RError:
-			ErrorSignal = RError
-		else:
-			ErrorSignal = 0
-
-		Esum = Esum + ErrorSignal
-		if not oldE:
-			Edif = 0
-		else:
-			Edif = ErrorSignal - oldE
-			oldE = ErrorSignal
-
-		steerContro = kp*oldE + kd*Edif + ki*Esum
-		if not isTurning:
-			UpdateSteering(11+steerContro)
+		if not isTurning and curTime-startTime >= 0.1:
+			EsigHistory.append(ErrorSignalM)
+			startTime = time.time()
+			StraightLineControl(EsigHistory)
+			UpdateSteering(10.8+steerContro)
 
 		if isTurning:
 			# Continue turn until a line around 45deg crosses the frame
@@ -301,18 +243,18 @@ def readFrame(frame, isintersect):
 		if findLine < 100:
 			isintersect = True
 		elif findLine > 100 and isintersect:
-			interLineTop = mask[row-10]
-			interLineBot = mask[row+10]
+			interLineTop = mask[row-5]
+			interLineBot = mask[row+5]
 			fLineT = np.where(np.equal(interLineTop,255))
 			fLineB = np.where(np.equal(interLineBot,255))
 			if fLineT[0].size:
 				findYelTop = np.amax(fLineT)
 			else:
-				findYelTop = 0
+				findYelTop = 150
 			if fLineB[0].size:
 				findYelBot = np.amax(fLineB)
 			else:
-				findYelBot = 0
+				findYelBot = 150
 			if findYelTop < 100 and findYelBot < 100:
 				isintersect = True
 			else:
@@ -321,7 +263,7 @@ def readFrame(frame, isintersect):
 
 	rho_out = []
 	theta_out = []
-	intersectDetectRow = 20 # need to test this constant
+	intersectDetectRow = 10 # need to test this constant
 
 	imgSmall = cv2.resize(frame.array,(150,150),cv2.INTER_AREA)
 	img=cv2.cvtColor(imgSmall,cv2.COLOR_BGR2HSV)
@@ -484,6 +426,7 @@ def lookStopLight():
 
 def StopCar():
 	UpdateMotor(7.4)
+	time.sleep(0.5)
 
 # Initialize Robot and Passenger Locations:
 # outpath, outcommands = UpdateMap(1)
