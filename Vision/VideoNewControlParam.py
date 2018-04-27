@@ -18,14 +18,14 @@ camera.framerate = 60
 rawCapture = PiRGBArray(camera, size=(1280, 720))
 
 
-cv2.namedWindow('image')
-cv2.resizeWindow('image',300,300)
-cv2.createTrackbar('Hue', 'image', 141, 255, nothing)
-cv2.createTrackbar('Sat', 'image', 18, 255, nothing)
-cv2.createTrackbar('Val', 'image', 97, 255, nothing)
-cv2.createTrackbar('HueU', 'image', 170, 179, nothing)
-cv2.createTrackbar('SatU', 'image', 250, 255, nothing)
-cv2.createTrackbar('ValU', 'image', 255, 255, nothing)
+# cv2.namedWindow('image')
+# cv2.resizeWindow('image',300,300)
+# cv2.createTrackbar('Hue', 'image', 141, 255, nothing)
+# cv2.createTrackbar('Sat', 'image', 18, 255, nothing)
+# cv2.createTrackbar('Val', 'image', 97, 255, nothing)
+# cv2.createTrackbar('HueU', 'image', 170, 179, nothing)
+# cv2.createTrackbar('SatU', 'image', 250, 255, nothing)
+# cv2.createTrackbar('ValU', 'image', 255, 255, nothing)
  
 
 # allow the camera to warmup

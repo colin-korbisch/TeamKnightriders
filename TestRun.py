@@ -14,14 +14,14 @@ import cv2
 # global dp
 # global sp
 # global radio
-class ROBOT
-	def __init__():
-	        self.radio = radioSetup()
-	        self.camera = PiCamera()
-	        self.camera.resolution = (640, 360)
-			self.camera.framerate = 30
-			self.rawCapture = PiRGBArray(camera, size=(640, 360))
-	        self.DEVICE_ADDRESS = 0x54
+# class ROBOT
+# 	def __init__():
+# 	        self.radio = radioSetup()
+# 	        self.camera = PiCamera()
+# 	        self.camera.resolution = (640, 360)
+# 			self.camera.framerate = 30
+# 			self.rawCapture = PiRGBArray(camera, size=(640, 360))
+# 	        self.DEVICE_ADDRESS = 0x54
 
 
 # Robot Test Run
@@ -29,50 +29,59 @@ def GoStraight(skipIntersect,nxTurn):
 	# continue going straight until you skip the correct num intersections
 	# once you do, approach the intersection until you are at the correct distance
 	# once at the correct distance, leave this state to begin your turn
-
+	startTime = time.time()
+	print "going straight"
 
 	# Define PID control constants:
-	kp = 0.5
-	kd = 0.009
-	ki = 0.00007
+	kp = 9000
+	kd = 425
+	ki = 10
 
 	# Define error terms
-	oldE = 0
+	oldE = None
 	Esum = 0
 
-	UpdateMotor(8)
+	EdifM = 0
+	EsumM = 0
+	oldEM = 0
+
+	UpdateMotor(7.875)
+	time.sleep(0.25)
+	UpdateMotor(7.85)
+
 	leave = False
 	numInt = 0
 	isintersect = False
 	oldInt = False
 
-	setpointL = 0.1571 # 9 Degrees
-	setpointR = 2.7925 # 160 Degrees
+	setpointL = -2 * np.pi/180 # 3 Degrees
+	setpointR = 170 * np.pi/180 # 169.5 Degrees
 
-	if nxTurn == 'L':
-		dist = #Ldistance
-	else:
-		dist = 100 # right distance
+	# if nxTurn == 'L':
+	# 	dist = #Ldistance
+	# else:
+	# 	dist = 100 # right distance
+
 
 	for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
 		# Do some image processing stuff...
 		oldInt = isintersect
-		rho_out, theta_out, isintersect = readFrame(frame)
-
+		rho_out, theta_out, isintersect = readFrame(frame, isintersect)
+		rawCapture.truncate(0)
 		# Check for stop lights
 		# NEED TO TIGHTEN-UP THIS CONDITION
-		if not isintersect:
-			signature = lookStopLight()
+		# if not isintersect:
+		# 	signature = lookStopLight()
 
-			if sum(np.equal(signature,1)) > 3:
-				StopCar()
-				is_stopped = True
-			else:
-				UpdateMotor(8)
-				is_stopped = False
-		else:
-			UpdateMotor(8)
-			is_stopped = False
+		# 	if sum(np.equal(signature,1)) > 3:
+		# 		StopCar()
+		# 		is_stopped = True
+		# 	else:
+		# 		UpdateMotor(8)
+		# 		is_stopped = False
+		# else:
+		# 	UpdateMotor(8)
+		# 	is_stopped = False
 
 		# Counting out number of intersections
 		if numInt != skipIntersect:
@@ -82,9 +91,7 @@ def GoStraight(skipIntersect,nxTurn):
 				leaveInt = True
 				enterInt = False
 				numInt = numInt + 1
-
-
-		if numInt == skipIntersect:
+		else:
 			break
 
 		if not isinstance(theta_out,np.ndarray):
@@ -92,10 +99,11 @@ def GoStraight(skipIntersect,nxTurn):
 		if not isinstance(rho_out,np.ndarray):
 			rho_out = np.array(rho_out)		
 
-
+		LError = []
+		RError = []
 		#Find right lines:
-		arr1 = np.greater_equal(theta_out,np.pi/2)
-		arr2 = np.lesser_equal(theta_out,3*np.pi/4)
+		arr1 = np.greater_equal(theta_out,7*np.pi/8)
+		arr2 = np.less_equal(theta_out,np.pi)
 		and_arr = np.logical_and(arr1,arr2)
 		rightLineIDs = np.where(and_arr)
 
@@ -104,16 +112,26 @@ def GoStraight(skipIntersect,nxTurn):
 			RError = setpointR - np.mean(theta_out[rightLineIDs])
 
 		#Find left lines:
-		arr1 = np.greater_equal(theta_out,np.pi/4)
-		arr2 = np.lesser_equal(theta_out,np.pi/2)
+		arr1 = np.greater_equal(theta_out,0)
+		arr2 = np.less_equal(theta_out,np.pi/8)
 		and_arr = np.logical_and(arr1,arr2)
 		leftLineIDs = np.where(and_arr)
 
 		# Left Error:
 		if leftLineIDs[0].size:
 			LError = setpointL - np.mean(theta_out[leftLineIDs])
+		
+
+		imgini = frame.array
+		cv2.namedWindow("Road",cv2.WINDOW_NORMAL)
+		imgSmall = cv2.resize(imgini,(150,150),cv2.INTER_AREA)
+		cv2.imshow('Road',imgSmall)
+
+
+		#Run Error Correct at 10 Hz w/ rolling mean for above calulations(?)
 
 		# Mean Error:
+		# print "determining line errors"
 		if LError:
 			if RError:
 				ErrorSignal = (LError+RError)/2
@@ -125,20 +143,33 @@ def GoStraight(skipIntersect,nxTurn):
 			ErrorSignal = 0
 
 		Esum = Esum + ErrorSignal
-		if not oldE:
+		if oldE == None:
 			Edif = 0
+			oldE = 0
 		else:
 			Edif = ErrorSignal - oldE
 			oldE = ErrorSignal
 
-		steerContro = kp*oldE + kd*Edif + ki*Esum
-
-		UpdateSteering(11+steerContro)
+		
+		curTime = time.time()
+		# print oldE, Edif, Esum
+		oldEM  = (oldE+oldEM)/2.
+		EdifM = (EdifM+Edif)/2.
+		EsumM = (EsumM+Esum)/2.
+		if curTime-startTime >= 0.1:
+			# print oldEM, EdifM, EsumM
+			steerContro = kp*oldEM + kd*EdifM + ki*EsumM
+			startTime = time.time()
+			# print steerContro
+			UpdateSteering(11.02,steerContro)
+			UpdateMotor(8-0.0005*abs(steerContro))
+		else:
+			UpdateMotor(7.86)
 
 		#Find horz lines:
 		rotateTheta = theta_out - np.pi
 		arr1 = np.greater_equal(rotateTheta,7*np.pi/8)
-		arr2 = np.lesser_equal(rotateTheta,np.pi/8)
+		arr2 = np.less_equal(rotateTheta,np.pi/8)
 		and_arr = np.logical_and(arr1,arr2)
 		horzLineIDs = np.where(and_arr)
 
@@ -154,10 +185,10 @@ def TurnRight():
 	oldE = 0
 	Esum = 0
 
-	setpointL = 0.1571 # 9 Degrees
-	setpointR = 2.7925 # 160 Degrees
+	setpointL = 0.05236 # 3 Degrees
+	setpointR = 2.95833 # 169.5 Degreessc
 
-	UpdateMotor(7.7)
+	UpdateMotor(7.71)
 	isTurning = False
 	lineSkip = True
 	checkComplete = False
@@ -167,11 +198,12 @@ def TurnRight():
 		# Do some image processing stuff...
 
 		rho_out, theta_out, distancePx = readFrameRight(frame,True)
+		rawCapture.truncate(0)
 		if not isTurning:
 			if distancePx >= 20: # How far the first intersection line travels down the frame BEFORE the next intersection line appears in frame
 				lineSkip = False
 
-			if distancePx >= 10 and not lineSkip# Adjust this constant as needed
+			if distancePx >= 10 and not lineSkip:# Adjust this constant as needed
 				UpdateSteering(13)
 				isTurning = True
 
@@ -182,13 +214,13 @@ def TurnRight():
 
 		#Find right lines:
 		arr1 = np.greater_equal(theta_out,np.pi/2)
-		arr2 = np.lesser_equal(theta_out,3*np.pi/4)
+		arr2 = np.less_equal(theta_out,3*np.pi/4)
 		and_arr = np.logical_and(arr1,arr2)
 		rightLineIDs = np.where(and_arr)
 
 		#Find left lines:
 		arr1 = np.greater_equal(theta_out,np.pi/4)
-		arr2 = np.lesser_equal(theta_out,np.pi/2)
+		arr2 = np.less_equal(theta_out,np.pi/2)
 		and_arr = np.logical_and(arr1,arr2)
 		leftLineIDs = np.where(and_arr)
 
@@ -229,13 +261,13 @@ def TurnRight():
 
 			# Find 45deg lines
 			arr1 = np.greater_equal(theta_out,3*np.pi/16)
-			arr2 = np.lesser_equal(theta_out, 5*np.pi/16)
+			arr2 = np.less_equal(theta_out, 5*np.pi/16)
 			and_arr = np.logical_and(arr1,arr2)
 			diagLineIDs = np.where(and_arr)
 			if diagLineIDs[0].size:
 				checkComplete = True
 
-		if (leftLineIDs[0].size or rightLineIDs[0].size) and checkComplete
+		if (leftLineIDs[0].size or rightLineIDs[0].size) and checkComplete:
 			isTurning = False
 			UpdateSteering(11)
 			break
@@ -246,7 +278,7 @@ def readFrame(frame, isintersect):
 		findYellow = np.where(np.equal(interLine,255))
 		if findYellow[0].size:
 			findLine = np.amax(findYellow)
-		else
+		else:
 			findLine = 0
 		if findLine < 100:
 			isintersect = True
@@ -273,20 +305,20 @@ def readFrame(frame, isintersect):
 	theta_out = []
 	intersectDetectRow = 20 # need to test this constant
 
-	imgSmall = cv2.resize(imgini,(150,150),cv2.INTER_AREA)
+	imgSmall = cv2.resize(frame.array,(150,150),cv2.INTER_AREA)
 	img=cv2.cvtColor(imgSmall,cv2.COLOR_BGR2HSV)
 	
 	# lowboundsYellow = np.array([10,59,67])
 	# upboundsYellow = np.array([39,229,219])
 
-	lowboundsYellow = np.array([25,29,60])
-	upboundsYellow = np.array([28,236,255])
+	lowboundsYellow = np.array([23,28,50])
+	upboundsYellow = np.array([28,248,220])
 
 	lbPurp = np.array([141,18,97])
-	ubPurp = np.array([170,112,143])
+	ubPurp = np.array([170,250,255])
 
-	maskY = cv2.inRange(display, lowboundsYellow, upboundsYellow)
-	maskP = cv2.inRange(display, lbPurp, ubPurp)
+	maskY = cv2.inRange(img, lowboundsYellow, upboundsYellow)
+	maskP = cv2.inRange(img, lbPurp, ubPurp)
 	maskTot = cv2.bitwise_or(maskY,maskP)
 
 	res = cv2.bitwise_and(imgSmall,imgSmall, mask=maskTot)
@@ -296,13 +328,13 @@ def readFrame(frame, isintersect):
 	edges = cv2.Canny(gray,50,150,apertureSize = 3)
 
 	lines = cv2.HoughLines(edges,0.5,np.pi/180,39)
-
-	for line in lines:
-		line = line[0]
-		rho = line[0]
-		theta = line[1]
-		rho_out.append(rho)
-		theta_out.append(theta)
+	if np.any(lines != None):
+		for line in lines:
+			line = line[0]
+			rho = line[0]
+			theta = line[1]
+			rho_out.append(rho)
+			theta_out.append(theta)
 
 	# Intersection Detection
 
@@ -330,7 +362,7 @@ def readFrameRight(frame):
 		findYellow = np.where(np.equal(interLine,255))
 		if findYellow[0].size:
 			findLine = np.amax(findYellow)
-		else
+		else:
 			findLine = 0
 		if findLine < 100:
 			isintersect = True
@@ -396,36 +428,44 @@ def readFrameRight(frame):
 	return rho_out, theta_out, distance
 
 def UpdateMotor(newDC):
-	# Reverse ~ 6%
+	# Reverse ~ 7.14%
 	# Neurtral ~ 7.5%
-	# Forward ~ 9%
+	# Forward ~ 7.8%
 	dp.ChangeDutyCycle(newDC)
 
-def UpdateSteering(newDC):
+def UpdateSteering(neutral, controlSign):
 	# 9% is Left
 	# 13% is Right
+	if neutral - controlSign <= 9:
+		newDC = 9
+	elif neutral - controlSign >= 13:
+		newDC = 13
+	else:
+		newDC = neutral - controlSign
 	sp.ChangeDutyCycle(newDC)
+	print newDC
+	time.sleep(0.5)
 
 def lookStopLight():
 	out = []
 	i = 0
-	while i < 4
+	while i < 4:
 		word = bus.read_word_data(DEVICE_ADDRESS, 0)
-			if word == 0xaa55:
-				i += 1
-				word = bus.read_word_data(DEVICE_ADDRESS, 1)
-				if word == 0xaa56 or word == 0xaa55:
-					checksum = bus.read_word_data(DEVICE_ADDRESS, 2)
-					signature = bus.read_word_data(DEVICE_ADDRESS, 3)
-					xctr = bus.read_word_data(DEVICE_ADDRESS, 4)
-					yctr = bus.read_word_data(DEVICE_ADDRESS, 5)
-					width = bus.read_word_data(DEVICE_ADDRESS, 6)
-					height = bus.read_word_data(DEVICE_ADDRESS, 7)
-					out.append(float(signature))
+		if word == 0xaa55:
+			i += 1
+			word = bus.read_word_data(DEVICE_ADDRESS, 1)
+			if word == 0xaa56 or word == 0xaa55:
+				checksum = bus.read_word_data(DEVICE_ADDRESS, 2)
+				signature = bus.read_word_data(DEVICE_ADDRESS, 3)
+				xctr = bus.read_word_data(DEVICE_ADDRESS, 4)
+				yctr = bus.read_word_data(DEVICE_ADDRESS, 5)
+				width = bus.read_word_data(DEVICE_ADDRESS, 6)
+				height = bus.read_word_data(DEVICE_ADDRESS, 7)
+				out.append(float(signature))
 	return out
 
 def StopCar():
-	UpdateMotor(5)
+	UpdateMotor(7.4)
 
 # Initialize Robot and Passenger Locations:
 # outpath, outcommands = UpdateMap(1)
@@ -449,30 +489,31 @@ global sp
 global radio
 
 camera = PiCamera()
-camera.resolution = (640, 360)
-camera.framerate = 30
-rawCapture = PiRGBArray(camera, size=(640, 360))
+camera.resolution = (1280, 720)
+camera.framerate = 60
+rawCapture = PiRGBArray(camera, size=(1280, 720))
 radio = radioSetup()
 
 # startup Pixy Camera I2C Comm
-bus = smbus.SMBus(1)
-DEVICE_ADDRESS = 0x54
+# bus = smbus.SMBus(1)
+# DEVICE_ADDRESS = 0x54
 
 # allow the camera to warmup
 time.sleep(0.1)
 
 
 # Initialize the pins
+steerPin = 32
+drivePin = 33
 GPIO.setmode(GPIO.BOARD)
 GPIO.setup(drivePin,GPIO.OUT)
 GPIO.setup(steerPin,GPIO.OUT)
-steerPin = 32
-drivePin = 33
 dp = GPIO.PWM(drivePin,50)
 sp = GPIO.PWM(steerPin,50)
 
-dp.start(0)
-sp.start(11)
+dp.start(7.5)
+time.sleep(3)
+sp.start(10.8)
 
 
 

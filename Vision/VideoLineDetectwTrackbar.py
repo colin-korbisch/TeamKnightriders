@@ -18,14 +18,14 @@ camera.framerate = 60
 rawCapture = PiRGBArray(camera, size=(1280, 720))
 
 
-cv2.namedWindow('image')
-cv2.resizeWindow('image',300,300)
-cv2.createTrackbar('Hue', 'image', 141, 255, nothing)
-cv2.createTrackbar('Sat', 'image', 18, 255, nothing)
-cv2.createTrackbar('Val', 'image', 97, 255, nothing)
-cv2.createTrackbar('HueU', 'image', 170, 179, nothing)
-cv2.createTrackbar('SatU', 'image', 250, 255, nothing)
-cv2.createTrackbar('ValU', 'image', 255, 255, nothing)
+# cv2.namedWindow('image')
+# cv2.resizeWindow('image',300,300)
+# cv2.createTrackbar('Hue', 'image', 61, 179, nothing)
+# cv2.createTrackbar('Sat', 'image', 235, 255, nothing)
+# cv2.createTrackbar('Val', 'image', 255, 255, nothing)
+# cv2.createTrackbar('HueU', 'image', 61, 179, nothing)
+# cv2.createTrackbar('SatU', 'image', 235, 255, nothing)
+# cv2.createTrackbar('ValU', 'image', 255, 255, nothing)
  
 
 # allow the camera to warmup
@@ -52,24 +52,22 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 
 	cv2.namedWindow("Road",cv2.WINDOW_NORMAL)
 	cv2.resizeWindow("Road",300,300)
-	hue = cv2.getTrackbarPos('Hue', 'image')
-	sat = cv2.getTrackbarPos('Sat', 'image')
-	val = cv2.getTrackbarPos('Val', 'image')
-	hueU = cv2.getTrackbarPos('HueU', 'image')
-	satU = cv2.getTrackbarPos('SatU', 'image')
-	valU = cv2.getTrackbarPos('ValU', 'image')
+	# hue = cv2.getTrackbarPos('Hue', 'image')
+	# sat = cv2.getTrackbarPos('Sat', 'image')
+	# val = cv2.getTrackbarPos('Val', 'image')
+	# hueU = cv2.getTrackbarPos('HueU', 'image')
+	# satU = cv2.getTrackbarPos('SatU', 'image')
+	# valU = cv2.getTrackbarPos('ValU', 'image')
 
-	lowboundsYellow = np.array([hue,sat,val])
-	upboundsYellow = np.array([hueU,satU,valU])
+	# lowboundsYellow = np.array([hue,sat,val])
+	# upboundsYellow = np.array([hueU,satU,valU])
 	# NEW BOUNDS FOUND FROM VIDEO:
 	
 	lowboundsYellow = np.array([25,29,60])
-	upboundsYellow = np.array([28,250,255])
-
-	# lbPurp = np.array([141,15,85])
-	# ubPurp = np.array([170,200,150])
-	lbPurp = np.array([hue,sat,val])
-	ubPurp = np.array([hueU,satU,valU])
+	upboundsYellow = np.array([28,236,255])
+	
+	lbPurp = np.array([141,18,97])
+	ubPurp = np.array([170,112,143])
 
 	maskY = cv2.inRange(display, lowboundsYellow, upboundsYellow)
 	maskP = cv2.inRange(display, lbPurp, ubPurp)
@@ -97,16 +95,11 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 			y1 = int(y0 + 100*a)
 			y2 = int(y0 - 100*a)
 			color_horz = [0,0,255]
-			color_R = [255,0,0]
-			color_L = [0,255,0]
-			if abs(theta) <= np.pi/2 + 0.005 and abs(theta) >= np.pi/2 - 0.005:
+			color_lane = [255,0,0]
+			if abs(theta) <= np.pi/2 + 0.01 and abs(theta) >= np.pi/2 - 0.01:
 				colorLine = color_horz #horz line should be red line
-			elif abs(theta) >= 0 and abs(theta) <= np.pi/8:
-				colorLine = color_L
-			elif abs(theta) >= 7*np.pi/8 and abs(theta) <= np.pi:
-				colorLine = color_R
 			else:
-				colorLine = [255,255,0]
+				colorLine = color_lane
 			cv2.line(imgSmall,(x1,y1),(x2,y2),colorLine,2)
 
 #linesP = cv2.HoughLinesP(maskTot,1,np.pi/180,50,30,6)
