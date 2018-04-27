@@ -33,28 +33,31 @@ def GoStraight(skipIntersect,nxTurn):
 	print "going straight"
 
 	# Define PID control constants:
-	kp = 9000
-	kd = 425
-	ki = 10
+	kp = 850
+	kd = 85
+	ki = 1.7
 
 	# Define error terms
-	oldE = None
 	Esum = 0
+	EsigHistory = []
 
 	EdifM = 0
 	EsumM = 0
 	oldEM = 0
+	EsignalM = 0
 
-	UpdateMotor(7.875)
+	UpdateMotor(7.88)
 	time.sleep(0.25)
-	UpdateMotor(7.85)
+	UpdateMotor(7.86)
 
 	leave = False
 	numInt = 0
 	isintersect = False
+	enterInt = False
+	leaveInt = True
 	oldInt = False
 
-	setpointL = -2 * np.pi/180 # 3 Degrees
+	setpointL = 0 * np.pi/180 # 3 Degrees
 	setpointR = 170 * np.pi/180 # 169.5 Degrees
 
 	# if nxTurn == 'L':
@@ -67,6 +70,7 @@ def GoStraight(skipIntersect,nxTurn):
 		# Do some image processing stuff...
 		oldInt = isintersect
 		rho_out, theta_out, isintersect = readFrame(frame, isintersect)
+		print isintersect
 		rawCapture.truncate(0)
 		# Check for stop lights
 		# NEED TO TIGHTEN-UP THIS CONDITION
@@ -84,6 +88,8 @@ def GoStraight(skipIntersect,nxTurn):
 		# 	is_stopped = False
 
 		# Counting out number of intersections
+		print "Numb of Inter Passed:", numInt
+		print "Numb of Int to Skip: ", skipIntersect
 		if numInt != skipIntersect:
 			if isintersect and not oldInt:
 				enterInt = True
@@ -91,7 +97,10 @@ def GoStraight(skipIntersect,nxTurn):
 				leaveInt = True
 				enterInt = False
 				numInt = numInt + 1
+			print "Did Enter Int?", enterInt
+			print "Did Leave Int?", leaveInt
 		else:
+			print "Entering Turn Mode"
 			break
 
 		if not isinstance(theta_out,np.ndarray):
@@ -120,11 +129,14 @@ def GoStraight(skipIntersect,nxTurn):
 		# Left Error:
 		if leftLineIDs[0].size:
 			LError = setpointL - np.mean(theta_out[leftLineIDs])
+		else:
+			LError = -10
 		
 
 		imgini = frame.array
 		cv2.namedWindow("Road",cv2.WINDOW_NORMAL)
 		imgSmall = cv2.resize(imgini,(150,150),cv2.INTER_AREA)
+		print "Show Image"
 		cv2.imshow('Road',imgSmall)
 
 
@@ -141,30 +153,36 @@ def GoStraight(skipIntersect,nxTurn):
 			ErrorSignal = RError
 		else:
 			ErrorSignal = 0
-
-		Esum = Esum + ErrorSignal
-		if oldE == None:
-			Edif = 0
-			oldE = 0
-		else:
-			Edif = ErrorSignal - oldE
-			oldE = ErrorSignal
-
 		
 		curTime = time.time()
 		# print oldE, Edif, Esum
-		oldEM  = (oldE+oldEM)/2.
-		EdifM = (EdifM+Edif)/2.
-		EsumM = (EsumM+Esum)/2.
+		# oldEM  = (oldE+oldEM)/2.
+		# EdifM = (EdifM+Edif)/2.
+		# EsumM = (EsumM+Esum)/2.
+		EsignalM = (EsignalM+ErrorSignal)/2.
+
 		if curTime-startTime >= 0.1:
-			# print oldEM, EdifM, EsumM
-			steerContro = kp*oldEM + kd*EdifM + ki*EsumM
+			EsigHistory.append(EsignalM)
+
+
+			# Finite Difference Derivative
+			if len(EsigHistory) >=3:
+				terms = EsigHistory[-3:]
+				Edif = 1.5*terms[-1]-2*terms[-2]+0.5*terms[-3]
+			elif len(EsigHistory) == 2:
+				Edif = EsigHistory[-1] - EsigHistory[-2]
+			else:
+				Edif = EsigHistory[-1]
+
+			Esum = Esum + EsignalM
+
+			steerContro = kp*EsigHistory[-1] + kd*Edif + ki*Esum
 			startTime = time.time()
 			# print steerContro
 			UpdateSteering(11.02,steerContro)
-			UpdateMotor(8-0.0005*abs(steerContro))
+			UpdateMotor(8-0.0004*abs(steerContro))
 		else:
-			UpdateMotor(7.86)
+			UpdateMotor(7.87)
 
 		#Find horz lines:
 		rotateTheta = theta_out - np.pi
@@ -469,8 +487,8 @@ def StopCar():
 
 # Initialize Robot and Passenger Locations:
 # outpath, outcommands = UpdateMap(1)
-outcommands = ['R','S1']
-outpath = [13, 1, 4, 12]
+outcommands = ['R','S9']
+outpath = [13, 14, 18, 20, 5, 8, 11, 12]
 curState = outcommands.pop()
 curLoc = outpath.pop()
 run_robot = True
