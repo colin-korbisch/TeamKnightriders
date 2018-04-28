@@ -64,7 +64,7 @@ def GetErrorSignal(theta_out,distance,leftBool):
 	# setpointR = 168*np.pi/180
 	setpointL = 1.5*np.pi/180
 	setpointR = 169.5*np.pi/180
-	setLDist =  38
+	setLDist =  45
 
 
 	LError = []
@@ -252,6 +252,7 @@ def TurnRight():
 	LdistHist = []
 	EsignalM = 0
 	LsigM = 0
+	RError = None
 
 	UpdateMotor(7.8)
 	isTurning = False
@@ -266,10 +267,10 @@ def TurnRight():
 		# Do some image processing stuff...
 
 		rho_out, theta_out, theta_outL, theta_outR, L_dist, detectR = readFrameRight(frame)
-		
+		# print "Can we see the right lane?: ", detectR
 		# rawCapture.truncate(0)
 		if not isTurning:
-			if not detectR:
+			if detectR:
 				print "Now Turning Right:"
 				UpdateSteering(13,0)
 				isTurning = True
@@ -286,7 +287,7 @@ def TurnRight():
 			rho_out = np.array(rho_out)		
 
 		LError, LDistE = GetErrorSignal(theta_outL,L_dist, 1)
-		RError = GetErrorSignal(theta_outR, L_dist, 0)
+		# RError = GetErrorSignal(theta_outR, L_dist, 0)
 
 		# Mean Error:
 		if RError:
@@ -308,16 +309,17 @@ def TurnRight():
 			# Now you need to check the frame until you complete the turn
 
 			# Find 45deg lines
-			arr1 = np.greater_equal(theta_out,3*np.pi/16)
-			arr2 = np.less_equal(theta_out, 5*np.pi/16)
+			arr1 = np.greater_equal(theta_outL,2*np.pi/16)
+			arr2 = np.less_equal(theta_outL, 6*np.pi/16)
 			and_arr = np.logical_and(arr1,arr2)
 			diagLineIDs = np.where(and_arr)
 			if diagLineIDs[0].size:
 				checkComplete = True
 
-		if RError and checkComplete:
+		if checkComplete:
 			isTurning = False
-			UpdateSteering(11)
+			UpdateSteering(11,0)
+			print "Turn Complete"
 			break
 
 def readFrame(frame, isintersect):
@@ -434,10 +436,11 @@ def readFrame(frame, isintersect):
 
 def readFrameRight(frame):
 	rho_out, theta_out, theta_outL,theta_outR, L_dist, isintersect = readFrame(frame, False)
+	# cv2.namedWindow('image Mask')
+	cv2.namedWindow('frame')
 	# print "Intersection Detection:", isintersect
 
 	imgini = frame
-	lookAheadColumn = 150 #Another constant to adjust as needed
 
 	imgSmall = cv2.resize(imgini,(150,150),cv2.INTER_AREA)
 	img=cv2.cvtColor(imgSmall,cv2.COLOR_BGR2HSV)
@@ -453,20 +456,37 @@ def readFrameRight(frame):
 	# maskTot = cv2.bitwise_or(maskY,maskP)
 	maskB = cv2.inRange(img,np.array([7,61,58]),np.array([115,222,255]))
 	# colLookAheadIDs = np.where(np.equal(maskTot[:,lookAheadColumn],255))
-	check1 = np.any(maskB[140,75:149]==255)
-	check2 = np.any(maskB[137,75:149]==255)
-	# check2 = np.any(maskB[0,75:]==255)
-	# works on the assumption that the camera will not see both the intersecting line and far line of the road
-	if check1 and check2:
+	# check1 = np.any(maskB[137,130:]==255)
+	# check2 = np.any(maskB[133,130:]==255)
+	# check3 = np.any(maskB[139,130:]==255)
+
+	checkLOC = maskB[120,140] == 255
+	checkLOC2 = maskB[120,145] == 255
+	checkLOC3 = maskB[118,142] == 255
+	# cv2.line(imgSmall,(140,0),(140,149),[255,255,0],1)
+	# cv2.line(imgSmall,(0,120),(149,120),[255,255,0],1)
+	# cv2.imshow('frame',imgSmall)
+	# # cv2.imshow('image Mask',maskB)
+	# cv2.waitKey()
+	print "R Lane Detection:", checkLOC, checkLOC2, checkLOC3
+	if checkLOC or checkLOC2 or checkLOC3:
 		detectR = True
 	else:
 		detectR = False
+	# print "Right Lane Detection:", check1, check2, check3
+	# # check2 = np.any(maskB[0,75:]==255)
+	# # works on the assumption that the camera will not see both the intersecting line and far line of the road
+	# print "RLane Sum:" , sum([check1,check2,check3])
+	# if sum([check1,check2,check3])<=1:
+	# 	detectR = False
+	# else:
+	# 	detectR = True
 
 	return rho_out, theta_out, theta_outL, theta_outR, L_dist, detectR
 
 def UpdateMotor(newDC):
 	# speedLimit = 7.9 #Comp speed limit
-	speedLimit = 7.5
+	speedLimit = 7.87
 	# Reverse ~ 7.14%
 	# Neurtral ~ 7.5%
 	# Forward ~ 7.8%
@@ -513,6 +533,7 @@ def StopCar():
 # Initialize Robot and Passenger Locations:
 # outpath, outcommands = UpdateMap(1)
 outcommands = ['R','S1']
+#outcommands = ['R']
 outpath = [13, 14, 18, 20, 5, 8, 11, 12]
 curState = outcommands.pop()
 curLoc = outpath.pop()
@@ -556,6 +577,7 @@ GPIO.setup(steerPin,GPIO.OUT)
 dp = GPIO.PWM(drivePin,50)
 sp = GPIO.PWM(steerPin,50)
 
+print "Starting Motor"
 dp.start(7.5)
 time.sleep(3)
 sp.start(10.8)

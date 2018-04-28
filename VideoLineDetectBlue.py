@@ -83,7 +83,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 	lines = cv2.HoughLines(edges,0.5,np.pi/180,36)
 	Llines = cv2.HoughLines(edges[:,0:75],0.5,np.pi/180,20)
 	Rlines = cv2.HoughLines(edges[:,76:150],0.5,np.pi/180,20)
-	cv2.line(imgSmall,(75,0),(75,150),[0,0,255],2)
+	# cv2.line(imgSmall,(75,0),(75,150),[0,0,255],2)
 	# print "Left Lines:", Llines
 	# print "Right Lines:", Rlines
 
@@ -121,9 +121,24 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 	# 			colorLine = color_R
 	# 		else:
 	# 			colorLine = [255,255,0]
-	cv2.line(imgSmall,(0,0),(149,0),[255,0,0],2)
-	cv2.line(imgSmall,(0,143),(149,143),[255,255,0],2)
+	# cv2.line(imgSmall,(0,0),(149,0),[255,0,0],2)
+	# cv2.line(imgSmall,(0,143),(149,143),[255,255,0],2)
+	check1 = np.any(maskB[138,101:]==255)
+	check2 = np.any(maskB[134,101:]==255)
+	check3 = np.any(maskB[140,101:]==255)
 
+	cv2.line(imgSmall,(120,0),(120,149),[255,255,0],2)
+
+
+
+	# cv2.line(imgSmall,(0,138),(149,138),[0,255,255],1)
+	# cv2.line(imgSmall,(0,134),(149,134),[0,255,255],1)
+	# cv2.line(imgSmall,(0,140),(149,140),[0,255,255],1)
+
+
+
+
+	print "R Lane Check:", check1, check2, check3
 #linesP = cv2.HoughLinesP(maskTot,1,np.pi/180,50,30,6)
 #for line in linesP:
 #	line = line[0]
