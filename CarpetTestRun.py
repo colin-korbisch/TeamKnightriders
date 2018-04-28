@@ -64,7 +64,7 @@ def GetErrorSignal(theta_out,distance,leftBool):
 	# setpointR = 168*np.pi/180
 	setpointL = 1.5*np.pi/180
 	setpointR = 169.5*np.pi/180
-	setLDist =  36
+	setLDist =  38
 
 
 	LError = []
@@ -453,8 +453,8 @@ def readFrameRight(frame):
 	# maskTot = cv2.bitwise_or(maskY,maskP)
 	maskB = cv2.inRange(img,np.array([7,61,58]),np.array([115,222,255]))
 	# colLookAheadIDs = np.where(np.equal(maskTot[:,lookAheadColumn],255))
-	check1 = np.any(maskB[143,75:]==255)
-	check2 = np.any(maskB[138,75:]==255)
+	check1 = np.any(maskB[140,75:149]==255)
+	check2 = np.any(maskB[137,75:149]==255)
 	# check2 = np.any(maskB[0,75:]==255)
 	# works on the assumption that the camera will not see both the intersecting line and far line of the road
 	if check1 and check2:
