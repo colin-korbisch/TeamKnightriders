@@ -64,7 +64,7 @@ def GetErrorSignal(theta_out,distance,leftBool):
 	# setpointR = 168*np.pi/180
 	setpointL = 1.5*np.pi/180
 	setpointR = 169.5*np.pi/180
-	setLDist =  45
+	setLDist =  40
 
 
 	LError = []
@@ -98,7 +98,7 @@ def GetErrorSignal(theta_out,distance,leftBool):
 			LError = setpointL - np.mean(theta_out[leftLineIDs])
 		else:
 			LError = 0.005
-			UpdateMotor(7.85)
+			UpdateMotor(7.88)
 		return LError, LDistE
 
 def StraightLineControl(EsigHistory,LaneDist):
@@ -109,8 +109,11 @@ def StraightLineControl(EsigHistory,LaneDist):
 	ki = 0.001
 
 	# Lane Distance Controller:
-	lkp = 0.053
-	lkd = 0.0019
+	# lkp = 0.053
+	# lkd = 0.0019
+	# lki = 0.0022
+	lkp = 0.056
+	lkd = 0.0035
 	lki = 0.0022
 
 		# Finite Difference Derivative
@@ -135,12 +138,12 @@ def StraightLineControl(EsigHistory,LaneDist):
 	steerContro = 0.55*(kp*EsigHistory[-1] + kd*Edif + ki*Esum) + 0.45*(lkp*LaneDist[-1] + lkd*Ldif + lki*Lsum)
 
 	UpdateSteering(10.8,steerContro)
-	if 8.2-0.05*abs(LaneDist[-1]) <= 7.88:
-		UpdateMotor(7.5)
-		time.sleep(0.2)
-		UpdateMotor(7.88)
+	if 8-0.002*abs(LaneDist[-1]) <= 7.9:
+		UpdateMotor(7.7)
+		time.sleep(0.05)
+		UpdateMotor(7.9)
 	else:
-		UpdateMotor(8.2-0.05*abs(LaneDist[-1]))
+		UpdateMotor(8-0.002*abs(LaneDist[-1]))
 
 def GoStraight(skipIntersect,nxTurn):
 	# continue going straight until you skip the correct num intersections
@@ -185,7 +188,7 @@ def GoStraight(skipIntersect,nxTurn):
 		# 	is_stopped = False
 
 		# Counting out number of intersections
-		# print "Numb of Inter Passed:", numInt
+		print "Numb of Inter Passed:", numInt
 		# print "Numb of Int to Skip: ", skipIntersect
 		# print numInt == skipIntersect
 		if numInt != skipIntersect:
@@ -237,7 +240,7 @@ def GoStraight(skipIntersect,nxTurn):
 			StraightLineControl(EsigHistory,LdistHist)
 			startTime = time.time()
 		else:
-			UpdateMotor(7.8)
+			UpdateMotor(7.9)
 			time.sleep(0.1)
 
 		#Find horz lines:
@@ -273,6 +276,8 @@ def TurnRight():
 			if detectR:
 				print "Now Turning Right:"
 				UpdateSteering(13,0)
+				UpdateMotor(8.2)
+				time.sleep(2.3)
 				isTurning = True
 			# if Interdistance >= 20: # How far the first intersection line travels down the frame BEFORE the next intersection line appears in frame
 			# 	lineSkip = False
@@ -309,8 +314,8 @@ def TurnRight():
 			# Now you need to check the frame until you complete the turn
 
 			# Find 45deg lines
-			arr1 = np.greater_equal(theta_outL,2*np.pi/16)
-			arr2 = np.less_equal(theta_outL, 6*np.pi/16)
+			arr1 = np.greater_equal(theta_outL,0)
+			arr2 = np.less_equal(theta_outL, 3*np.pi/16)
 			and_arr = np.logical_and(arr1,arr2)
 			diagLineIDs = np.where(and_arr)
 			if diagLineIDs[0].size:
@@ -396,7 +401,7 @@ def readFrame(frame, isintersect):
 	# l3 = interDetect(maskB,intersectDetectRow+1,isintersect)
 
 	# New Intersection Detection
-	ar1 = np.where(maskB[130,:]==255)
+	ar1 = np.where(maskB[129,:]==255)
 	if ar1[0].size:
 		l1 = np.max(ar1)
 		if l1<75:
@@ -406,16 +411,22 @@ def readFrame(frame, isintersect):
 	else:
 		checkTop = False
 
-	l3 = np.max(np.where(maskB[137,:]==255))
-	if l3<75:
-		checkMid = True
+	ar3 = np.where(maskB[132,:]==255)
+	if ar3[0].size:
+		l3 = np.max(ar3)
+		if l3<75:
+			checkMid = True
+		else:
+			checkMid = False
 	else:
 		checkMid = False
-	l2 = np.max(np.where(maskB[145,:]==255))
+	l2 = np.max(np.where(maskB[139,:]==255))
 	if l2<75:
 		checkBot = True
 	else:
 		checkBot = False
+
+	print "interChecK", checkTop, checkMid, checkBot
 
 	if sum([checkTop,checkMid,checkBot]) > 1:
 		isintersect = True
@@ -460,9 +471,9 @@ def readFrameRight(frame):
 	# check2 = np.any(maskB[133,130:]==255)
 	# check3 = np.any(maskB[139,130:]==255)
 
-	checkLOC = maskB[120,140] == 255
-	checkLOC2 = maskB[120,145] == 255
-	checkLOC3 = maskB[118,142] == 255
+	checkLOC = maskB[112,141] == 255
+	checkLOC2 = maskB[118,145] == 255
+	checkLOC3 = maskB[115,142] == 255
 	# cv2.line(imgSmall,(140,0),(140,149),[255,255,0],1)
 	# cv2.line(imgSmall,(0,120),(149,120),[255,255,0],1)
 	# cv2.imshow('frame',imgSmall)
@@ -486,14 +497,14 @@ def readFrameRight(frame):
 
 def UpdateMotor(newDC):
 	# speedLimit = 7.9 #Comp speed limit
-	speedLimit = 7.87
+	speedLimit = 7.95
 	# Reverse ~ 7.14%
 	# Neurtral ~ 7.5%
 	# Forward ~ 7.8%
 	if newDC > speedLimit:
 		newDC = speedLimit
 	dp.ChangeDutyCycle(newDC)
-	time.sleep(0.1)
+	time.sleep(0.5)
 
 def UpdateSteering(neutral, controlSign):
 	# 9% is Left

@@ -18,17 +18,17 @@ sp = GPIO.PWM(steerPin,50)
 dp.start(7.5)
 sp.start(11)
 print "starting neutral"
-time.sleep(20)
+time.sleep(5)
 print "going straight"
 dp.ChangeDutyCycle(7.8)
-time.sleep(20)
+time.sleep(2)
 print "going reverse"
 dp.ChangeDutyCycle(7)
 time.sleep(0.05)
 dp.ChangeDutyCycle(7.5)
 time.sleep(0.05)
 dp.ChangeDutyCycle(7.14)
-time.sleep(20)
+time.sleep(2)
 quit()
 
 
