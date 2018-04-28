@@ -122,7 +122,6 @@ def StraightLineControl(EsigHistory,LaneDist):
 	else:
 		UpdateMotor(8.2-0.05*abs(LaneDist[-1]))
 
-
 def pixel2coord(pixelLoc):
 	xLoc = pixelLoc[0]
 	yLoc = pixelLoc[1]
@@ -187,59 +186,155 @@ def pixel2coord(pixelLoc):
 	return blkPos
 
 def TurnLeft():
+	print "Left Turn State"
+	EsigHistory = []
+	LdistHist = []
+	EsignalM = 0
+	LsigM = 0
+	RError = None
 
-def TurnRight():
-	sendState(1)
-	UpdateMotor(7.7)
+	UpdateMotor(7.8)
 	isTurning = False
 	lineSkip = True
 	checkComplete = False
+	startTime = time.time()
 
-	for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-		
+	# for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+	while True:
+		frame = vs.read()
+		curTime = time.time()
 		# Do some image processing stuff...
 
-		rho_out, theta_out, distancePx = readFrameRight(frame,True)
+		rho_out, theta_out, theta_outL, theta_outR, L_dist, centDist = readFrameLeft(frame)
+		# print "Can we see the right lane?: ", detectR
+		# rawCapture.truncate(0)
 		if not isTurning:
-			if distancePx >= 20: # How far the first intersection line travels down the frame BEFORE the next intersection line appears in frame
-				lineSkip = False
-
-			if distancePx >= 10 and not lineSkip# Adjust this constant as needed
-				UpdateSteering(13)
+			if centDist>5: #distance to tune for left turning. the larger the value, the later the car will turn
+				print "Now Turning Left:"
+				UpdateSteering(9,0)
 				isTurning = True
+			# if Interdistance >= 20: # How far the first intersection line travels down the frame BEFORE the next intersection line appears in frame
+			# 	lineSkip = False
+
+			# if distancePx >= 10 and not lineSkip:# Adjust this constant as needed
+			# 	UpdateSteering(13)
+			# 	isTurning = True
 
 		if not isinstance(theta_out,np.ndarray):
 			theta_out = np.array(theta_out)
 		if not isinstance(rho_out,np.ndarray):
 			rho_out = np.array(rho_out)		
 
-		#Find right lines:
-		arr1 = np.greater_equal(theta_out,np.pi/2)
-		arr2 = np.less_equal(theta_out,3*np.pi/4)
-		and_arr = np.logical_and(arr1,arr2)
-		rightLineIDs = np.where(and_arr)
+		LError, LDistE = GetErrorSignal(theta_outL,L_dist, 1)
+		# RError = GetErrorSignal(theta_outR, L_dist, 0)
 
-		#Find left lines:
-		arr1 = np.greater_equal(theta_out,np.pi/4)
-		arr2 = np.less_equal(theta_out,np.pi/2)
-		and_arr = np.logical_and(arr1,arr2)
-		leftLineIDs = np.where(and_arr)
+		# Mean Error:
+		if RError:
+			ErrorSignal = (LError+RError)/2.
+		else:
+			ErrorSignal = LError
+		
+		EsignalM = (EsignalM+ErrorSignal)/2.
+		LsigM = (LsigM+LDistE)/2.
+
+		if not isTurning and curTime-startTime >= 0.0125:
+			EsigHistory.append(EsignalM)
+			LdistHist.append(LsigM)
+			StraightLineControl(EsigHistory,LdistHist)
+			startTime = time.time()
 
 		if isTurning:
 			# Continue turn until a line around 45deg crosses the frame
 			# Now you need to check the frame until you complete the turn
 
 			# Find 45deg lines
-			arr1 = np.greater_equal(theta_out,3*np.pi/16)
-			arr2 = np.less_equal(theta_out, 5*np.pi/16)
+			arr1 = np.greater_equal(theta_outR,2*np.pi/16)
+			arr2 = np.less_equal(theta_outR, 6*np.pi/16)
 			and_arr = np.logical_and(arr1,arr2)
 			diagLineIDs = np.where(and_arr)
 			if diagLineIDs[0].size:
 				checkComplete = True
 
-		if (leftLineIDs[0].size or rightLineIDs[0].size) and checkComplete
+		if checkComplete:
 			isTurning = False
-			UpdateSteering(11)
+			UpdateSteering(11,0)
+			print "Turn Complete"
+			break
+
+def TurnRight():
+	print "Right Turn State"
+	EsigHistory = []
+	LdistHist = []
+	EsignalM = 0
+	LsigM = 0
+	RError = None
+
+	UpdateMotor(7.8)
+	isTurning = False
+	lineSkip = True
+	checkComplete = False
+	startTime = time.time()
+
+	# for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+	while True:
+		frame = vs.read()
+		curTime = time.time()
+		# Do some image processing stuff...
+
+		rho_out, theta_out, theta_outL, theta_outR, L_dist, detectR = readFrameRight(frame)
+		# print "Can we see the right lane?: ", detectR
+		# rawCapture.truncate(0)
+		if not isTurning:
+			if detectR:
+				print "Now Turning Right:"
+				UpdateSteering(13,0)
+				isTurning = True
+			# if Interdistance >= 20: # How far the first intersection line travels down the frame BEFORE the next intersection line appears in frame
+			# 	lineSkip = False
+
+			# if distancePx >= 10 and not lineSkip:# Adjust this constant as needed
+			# 	UpdateSteering(13)
+			# 	isTurning = True
+
+		if not isinstance(theta_out,np.ndarray):
+			theta_out = np.array(theta_out)
+		if not isinstance(rho_out,np.ndarray):
+			rho_out = np.array(rho_out)		
+
+		LError, LDistE = GetErrorSignal(theta_outL,L_dist, 1)
+		# RError = GetErrorSignal(theta_outR, L_dist, 0)
+
+		# Mean Error:
+		if RError:
+			ErrorSignal = (LError+RError)/2.
+		else:
+			ErrorSignal = LError
+		
+		EsignalM = (EsignalM+ErrorSignal)/2.
+		LsigM = (LsigM+LDistE)/2.
+
+		if not isTurning and curTime-startTime >= 0.0125:
+			EsigHistory.append(EsignalM)
+			LdistHist.append(LsigM)
+			StraightLineControl(EsigHistory,LdistHist)
+			startTime = time.time()
+
+		if isTurning:
+			# Continue turn until a line around 45deg crosses the frame
+			# Now you need to check the frame until you complete the turn
+
+			# Find 45deg lines
+			arr1 = np.greater_equal(theta_outL,2*np.pi/16)
+			arr2 = np.less_equal(theta_outL, 6*np.pi/16)
+			and_arr = np.logical_and(arr1,arr2)
+			diagLineIDs = np.where(and_arr)
+			if diagLineIDs[0].size:
+				checkComplete = True
+
+		if checkComplete:
+			isTurning = False
+			UpdateSteering(11,0)
+			print "Turn Complete"
 			break
 
 def UpdateMap(pickup):
@@ -248,35 +343,53 @@ def UpdateMap(pickup):
 	robotLoc = []
 	psngrLoc = []
 	destLoc = []
-	# if pickup:
-		# while not robotLoc and not psngrLoc:
-		# 	rad_Data = getRadioSignal()
-		# 	if "ROBOT" in rad_Data:
-		# 		robotLoc = rad_Data
-		# 	elif "PSGR" in rad_Data:
-		# 		psngrLoc = rad_Data
-		# robPos, psngrPos = pixel2coord(robotLoc, psngerLoc)
-		# outpath, outcommands = cityPath(robPos[0], robPos[1], psngrPos[0], psngrPos[1])
-	# else:
-		# while not robotLoc and not dropLoc:
-		# 	rad_Data = getRadioSignal()
-		# 	if "ROBOT" in rad_Data:
-		# 		robotLoc = rad_Data
-		# 	elif "DROP" in rad_Data:
-		# 		dropLoc = rad_Data
-		# robPos, psngrPos = pixel2coord(robotLoc, dropLoc)
-		# outpath, outcommands = cityPath(robPos[0], robPos[1], dropPos[0], dropPos[1])
-	outpath = [12, 0, 3, 6, 9, 10, 11, 8, 5, 2, 13]
-	outcommands = ['S0', 'R', 'S1', 'R', 'S0', 'R', 'S1', 'R']
-	return outpath, outcommands
+	robL, psngrL, destL = getRadioSignal(radio)
+	robData = split(robL)
+	robotLocation = [robData[1], robData[2]]
+	robPos = pixel2coord(robotLocation)
+	if pickup:
+		psngrL = split(psngrL)
+		psngrLocation = [psngrL[1], psngrL[2]]
+		psngrPos = pixel2coord(psngrLocation)
+		outpath, outcommands = cityPath(robPos[0], robPos[1], psngrPos[0], psngrPos[1])
+		i = -1
+		newcomm = []
+		while i >= -1*len(outcommands):
+			if outcommands[i] != 'S':
+				newcomm.append(outcommands[i])
+				i = i-1
+			else:
+				goS = 0
+				while outcommands[i-1] == 'S':
+					goS = goS + 1
+					i = i-1
+				i = i-1
+				newcomm.append('S{}'.format(goS))
+		outcommands = newcomm[::-1]
 
-def PollCurLoc():
-	# robotLoc = []
-	# while not robotLoc:
-	robPos, psPos, destPos = getRadioSignal()
-	# 	data = rad_Data.split(" ")
-	# 	data
-	# robNode = pixel2node(robotLoc)
+	else:
+		destL = split(destL)
+		destLocation = [destL[1], destL[2]]
+		destPos = pixel2coord(destLocation)
+		# robPos, psngrPos = pixel2coord(robotLoc, dropLoc)
+		outpath, outcommands = cityPath(robPos[0], robPos[1], destPos[0], destPos[1])
+		i = -1
+		newcomm = []
+		while i >= -1*len(outcommands):
+			if outcommands[i] != 'S':
+				newcomm.append(outcommands[i])
+				i = i-1
+			else:
+				goS = 0
+				while outcommands[i-1] == 'S':
+					goS = goS + 1
+					i = i-1
+				i = i-1
+				newcomm.append('S{}'.format(goS))
+		outcommands = newcomm[::-1]
+	# outpath = [12, 0, 3, 6, 9, 10, 11, 8, 5, 2, 13]
+	# outcommands = ['S0', 'R', 'S1', 'R', 'S0', 'R', 'S1', 'R']
+	return outpath, outcommands
 
 def sendState(stateIndex):
 	#send the stateID to Arduino
@@ -569,6 +682,34 @@ def readFrameRight(frame):
 
 	return rho_out, theta_out, theta_outL, theta_outR, L_dist, detectR
 
+def readFrameLeft(frame):
+	rho_out, theta_out, theta_outL,theta_outR, L_dist, isintersect = readFrame(frame, False)
+	
+	imgini = frame
+
+	imgSmall = cv2.resize(imgini,(150,150),cv2.INTER_AREA)
+	img=cv2.cvtColor(imgSmall,cv2.COLOR_BGR2HSV)
+
+	lowboundsYellow = np.array([25,29,60])
+	upboundsYellow = np.array([28,236,255])
+
+	lbPurp = np.array([141,18,97])
+	ubPurp = np.array([170,112,143])
+
+	maskY = cv2.inRange(display, lowboundsYellow, upboundsYellow)
+	maskP = cv2.inRange(display, lbPurp, ubPurp)
+	maskTot = cv2.bitwise_or(maskY,maskP)
+	# maskB = cv2.inRange(img,np.array([7,61,58]),np.array([115,222,255]))
+
+
+	checkCenter = np.where(maskTot[:,75] == 255)
+	if checkCenter[0].size:
+		centerdist = np.min(checkCenter)
+	else:
+		centerdist = 0
+	
+
+	return rho_out, theta_out, theta_outL, theta_outR, L_dist, centerdist
 def UpdateMotor(newDC):
 	# speedLimit = 7.9 #Comp speed limit
 	speedLimit = 7.87
@@ -637,6 +778,7 @@ sp = GPIO.PWM(steerPin,50)
 
 dp.start(7.5)
 sp.start(11)
+time.sleep(3)
 
 
 
