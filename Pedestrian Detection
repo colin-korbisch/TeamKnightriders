@@ -2,11 +2,11 @@ import RPi.GPIO as GPIO
 import time
 GPIO.setmode(GPIO.BOARD)
 
-TrigLeft = 21 
-EchoLeft = 22
-TrigRight = 23
-EchoRight = 24
-ThresholdValue = 
+TrigLeft = 11 
+EchoLeft = 13
+TrigRight = 15
+EchoRight = 16
+#ThresholdValue = 
 
 GPIO.setup(TrigLeft,GPIO.OUT)
 GPIO.setup(TrigRight,GPIO.OUT)
@@ -44,31 +44,33 @@ while GPIO.input(EchoRight)==1:
 Right_Pulse_Duration = Right_Pulse_End - Right_Pulse_Start
 RightDistance = Right_Pulse_Duration * 17150
 
-if(LeftDistance <= ThresholdValue)
-{
-	while(RightDistance >= ThresholdValue)
-	{
-	  UpdateMotor(7.5)
-	  }
-	if(RightDistance <= ThresholdValue) 
-	{
-	  delay(3000)
-	  UpdateMotor(OldDC)
-	} 
-}
+#print(LeftDistance)
+#print(RightDistance)
 
-else if(RightDistance <= ThresholdValue)
-{
-	while(LeftDistance >= ThresholdValue)
-	{
-	  UpdateMotor(7.5)
-	  }
-	if(LeftDistance <= ThresholdValue) 
-	{
-	  delay(3000)
-	  UpdateMotor(OldDC)
-	} 
-}
+#if(LeftDistance <= ThresholdValue):
+
+	#while(RightDistance >= ThresholdValue):
+	
+	 # UpdateMotor(7.5)
+	  
+	#if(RightDistance <= ThresholdValue) 
+	
+	 # time.sleep(3)
+	 # UpdateMotor(OldDC)
+	 
+
+#else if(RightDistance <= ThresholdValue):
+
+	#while(LeftDistance >= ThresholdValue):
+	
+	 # UpdateMotor(7.5)
+	  
+	#if(LeftDistance <= ThresholdValue):
+	
+	 # time.sleep(3)
+	 #UpdateMotor(OldDC)
+	
+
 
 
 
