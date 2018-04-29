@@ -437,48 +437,53 @@ def readFrame(frame, isintersect):
 
 	# New intersection detection
 	ar0 = np.where(maskB[125,:]==255)
-    if ar0[0].size:
-    	l0 = np.max(ar0)
-        if l0 < 75:
-            checkVTop = True
-        else:
-            checkVTop = False
+	if ar0[0].size:
+		l0 = np.max(ar0)
+    	if l0 < 75:
+    		checkVTop = True
+    	else:
+    		checkVTop = False
     else:
-        checkVTop = False
+    	checkVTop = False
 
 
-    ar1 = np.where(maskB[127,:]==255)
-    if ar1[0].size:
-        l1 = np.max(ar1)
-        if l1<75:
-            checkTop = True
-        else:
-            checkTop = False
-    else:
-        checkTop = False
+	ar1 = np.where(maskB[127,:]==255)
+	if ar1[0].size:
+		l1 = np.max(ar1)
+		if l1<75:
+			checkTop = True
+		else:
+			checkTop = False
+	else:
+		checkTop = False
 
-    ar3 = np.where(maskB[132,:]==255)
-    if ar3[0].size:
-        l3 = np.max(ar3)
-        if l3<75:
-            checkMid = True
-        else:
-            checkMid = False
-    else:
-        checkMid = False
+	ar3 = np.where(maskB[132,:]==255)
+	if ar3[0].size:
+		l3 = np.max(ar3)
+		if l3<75:
+			checkMid = True
+		else:
+			checkMid = False
+	else:
+		checkMid = False
 
-    l2 = np.max(np.where(maskB[136,:]==255))
-    if l2<75:
-        checkBot = True
-    else:
-        checkBot = False
+    
+    ar4 = np.where(maskB[136,:]==255)
+	if ar4[0].size:
+		l4 = np.max(ar3)
+		if l4<75:
+			checkBot = True
+		else:
+			checkBot = False
+	else:
+		checkBot = False
 
-    print "interChecK", checkTop, checkMid, checkBot
+	print "interChecK", checkTop, checkMid, checkBot
 
-    if sum([checkTop,checkMid,checkBot,checkVTop]) > 2:
-        isintersect = True
-    else:
-        isintersect = False
+	if sum([checkTop,checkMid,checkBot,checkVTop]) > 2:
+		isintersect = True
+	else:
+		isintersect = False
 
 	# print "Intersection Detection: ", l1,l2,l3
 	# if sum([l1,l2,l3]) > 1:
