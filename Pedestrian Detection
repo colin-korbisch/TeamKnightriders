@@ -44,8 +44,8 @@ while GPIO.input(EchoRight)==1:
 Right_Pulse_Duration = Right_Pulse_End - Right_Pulse_Start
 RightDistance = Right_Pulse_Duration * 17150
 
-#print(LeftDistance)
-#print(RightDistance)
+print(LeftDistance)
+print(RightDistance)
 
 #if(LeftDistance <= ThresholdValue):
 
