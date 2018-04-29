@@ -98,7 +98,7 @@ def GetErrorSignal(theta_out,distance,leftBool):
 			LError = setpointL - np.mean(theta_out[leftLineIDs])
 		else:
 			LError = 0.005
-			UpdateMotor(7.862)
+			UpdateMotor(7.8615)
 		return LError, LDistE
 	
 
@@ -113,9 +113,9 @@ def StraightLineControl(EsigHistory,LaneDist):
 	# lkp = 0.053
 	# lkd = 0.0019
 	# lki = 0.0022
-	lkp = 0.02
-	lkd = 0.04
-	lki = 0.0022
+	lkp = 0.3
+	lkd = .25
+	lki = 0.001
 
 		# Finite Difference Derivative
 	if len(EsigHistory) >=3:
@@ -140,11 +140,11 @@ def StraightLineControl(EsigHistory,LaneDist):
 
 	UpdateSteering(10.8,steerContro)
 	if 8-0.002*abs(LaneDist[-1]) <= 2:
-		UpdateMotor(7.82)
+		UpdateMotor(7.815)
 		time.sleep(0.05)
-		UpdateMotor(7.862)
+		UpdateMotor(7.83)
 	else:
-		UpdateMotor(8-0.0018*abs(LaneDist[-1]))
+		UpdateMotor(8-0.002*abs(LaneDist[-1]))
 		time.sleep(0.05)
 
 def GoStraight(skipIntersect,nxTurn):
@@ -275,7 +275,7 @@ def TurnRight():
 		# print "Can we see the right lane?: ", detectR
 		# rawCapture.truncate(0)
 		if not isTurning:
-			if detectR:
+			if detectR and not isInt:
 				print "Now Turning Right:"
 				UpdateSteering(13,0)
 				UpdateMotor(8.2)
@@ -521,19 +521,29 @@ def readFrameRight(frame):
 	# check2 = np.any(maskB[133,130:]==255)
 	# check3 = np.any(maskB[139,130:]==255)
 
-	checkLOC = maskB[112,141] == 255
-	checkLOC2 = maskB[118,145] == 255
-	checkLOC3 = maskB[115,142] == 255
+	# checkLOC = maskB[112,141] == 255
+	# checkLOC2 = maskB[118,145] == 255
+	# checkLOC3 = maskB[115,142] == 255
+	circle = maskB[115:120,141:146]
+
 	# cv2.line(imgSmall,(140,0),(140,149),[255,255,0],1)
 	# cv2.line(imgSmall,(0,120),(149,120),[255,255,0],1)
 	# cv2.imshow('frame',imgSmall)
 	# # cv2.imshow('image Mask',maskB)
 	# cv2.waitKey()
-	print "R Lane Detection:", checkLOC, checkLOC2, checkLOC3
-	if checkLOC or checkLOC2 or checkLOC3:
+
+	# print "R Lane Detection:", checkLOC, checkLOC2, checkLOC3
+	# if checkLOC or checkLOC2 or checkLOC3:
+	# 	detectR = True
+	# else:
+	# 	detectR = False
+
+	print "R Lane Detect", circle == 255
+	if np.any(circle == 225):
 		detectR = True
 	else:
 		detectR = False
+
 	# print "Right Lane Detection:", check1, check2, check3
 	# # check2 = np.any(maskB[0,75:]==255)
 	# # works on the assumption that the camera will not see both the intersecting line and far line of the road
@@ -547,7 +557,7 @@ def readFrameRight(frame):
 
 def UpdateMotor(newDC):
 	# speedLimit = 7.9 #Comp speed limit
-	speedLimit = 7.865
+	speedLimit = 7.863
 	# Reverse ~ 7.14%
 	# Neurtral ~ 7.5%
 	# Forward ~ 7.8%
