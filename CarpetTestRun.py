@@ -439,14 +439,13 @@ def readFrame(frame, isintersect):
 	ar0 = np.where(maskB[125,:]==255)
 	if ar0[0].size:
 		l0 = np.max(ar0)
-    	if l0 < 75:
-    		checkVTop = True
-    	else:
-    		checkVTop = False
-    else:
-    	checkVTop = False
-
-
+		if l0<75:
+			checkVTop = True
+		else: 
+			checkVTop = False
+	else:
+		checkVTop = False
+	
 	ar1 = np.where(maskB[127,:]==255)
 	if ar1[0].size:
 		l1 = np.max(ar1)
@@ -467,8 +466,7 @@ def readFrame(frame, isintersect):
 	else:
 		checkMid = False
 
-    
-    ar4 = np.where(maskB[136,:]==255)
+	ar4 = np.where(maskB[136,:]==255)
 	if ar4[0].size:
 		l4 = np.max(ar3)
 		if l4<75:
