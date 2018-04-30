@@ -62,9 +62,9 @@ def GetErrorSignal(theta_out,distance,leftBool):
 
 	# setpointL = 2*np.pi/180
 	# setpointR = 168*np.pi/180
-	setpointL = 1.3*np.pi/180
+	setpointL = 1.5*np.pi/180
 	setpointR = 169.5*np.pi/180
-	setLDist =  40
+	setLDist =  15
 
 
 	LError = []
@@ -105,17 +105,18 @@ def GetErrorSignal(theta_out,distance,leftBool):
 def StraightLineControl(EsigHistory,LaneDist):
 	# Define PID control constants:
 	# Angle PID
-	kp = 0.25
-	kd = 3.2
+	kp = 0.005
+	kd = 2.5
 	ki = 0.001
 
 	# Lane Distance Controller:
 	# lkp = 0.053
 	# lkd = 0.0019
 	# lki = 0.0022
-	lkp = 0.3
-	lkd = .25
-	lki = 0.001
+	#lkp = .005
+	lkp = 0
+	lkd = 5
+	lki = 0.01
 
 		# Finite Difference Derivative
 	if len(EsigHistory) >=3:
@@ -140,11 +141,11 @@ def StraightLineControl(EsigHistory,LaneDist):
 
 	UpdateSteering(10.8,steerContro)
 	if 8-0.002*abs(LaneDist[-1]) <= 2:
-		UpdateMotor(7.815)
+		UpdateMotor(7.82)
 		time.sleep(0.05)
-		UpdateMotor(7.83)
+		UpdateMotor(7.835)
 	else:
-		UpdateMotor(8-0.002*abs(LaneDist[-1]))
+		UpdateMotor(8-0.001*abs(LaneDist[-1]))
 		time.sleep(0.05)
 
 def GoStraight(skipIntersect,nxTurn):
@@ -234,7 +235,7 @@ def GoStraight(skipIntersect,nxTurn):
 		# EdifM = (EdifM+Edif)/2.
 		# EsumM = (EsumM+Esum)/2.
 		EsignalM = (EsignalM+ErrorSignal)/2.
-		LsigM = (LsigM+LDistE)/2.
+		#LsigM = (LsigM+LDistE)/2.
 
 		if curTime-startTime >= 0.0125:
 			EsigHistory.append(EsignalM)
@@ -353,11 +354,11 @@ def readFrame(frame, isintersect):
 	# maskP = cv2.inRange(img, lbPurp, ubPurp)
 	# maskTot = cv2.bitwise_or(maskY,maskP)
 	maskB = cv2.inRange(img,np.array([7,61,58]),np.array([115,222,255]))
-	TopLine = maskB[0,0:75]
+	TopLine = maskB[1:15,1:75]
 	if np.any(TopLine==255):
 		distance = np.max(np.where(TopLine==255))
 	else:
-		distance = 75
+		distance = 15
 
 	res = cv2.bitwise_and(imgSmall,imgSmall, mask=maskB)
 
@@ -366,7 +367,7 @@ def readFrame(frame, isintersect):
 	edges = cv2.Canny(gray,50,150,apertureSize = 3)
 
 	lines = cv2.HoughLines(edges,0.5,np.pi/180,35)
-	leftLines = cv2.HoughLines(edges[:,0:70],0.5,np.pi/180,20)
+	leftLines = cv2.HoughLines(edges[:,0:70],0.5,np.pi/180,20) 
 	rightLines = cv2.HoughLines(edges[:,80:150],0.5,np.pi/180,20)
 	if np.any(leftLines != None):
 		for line in leftLines:
@@ -468,7 +469,7 @@ def readFrame(frame, isintersect):
 
 	ar4 = np.where(maskB[136,:]==255)
 	if ar4[0].size:
-		l4 = np.max(ar3)
+		l4 = np.max(ar4)
 		if l4<75:
 			checkBot = True
 		else:
