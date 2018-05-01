@@ -216,7 +216,8 @@ def GoStraight(skipIntersect,nxTurn):
 			rho_out = np.array(rho_out)		
 
 		LError, LDistE = GetErrorSignal(theta_outL,L_dist, 1)
-		RError = GetErrorSignal(theta_outR, L_dist, 0)
+		# RError = GetErrorSignal(theta_outR, L_dist, 0)
+		RError = 0
 		# if LError < 0:
 		# 	LError = LError - 0.05
 
@@ -235,7 +236,7 @@ def GoStraight(skipIntersect,nxTurn):
 		# EdifM = (EdifM+Edif)/2.
 		# EsumM = (EsumM+Esum)/2.
 		EsignalM = (EsignalM+ErrorSignal)/2.
-		#LsigM = (LsigM+LDistE)/2.
+		LsigM = (LsigM+LDistE)/2.
 
 		if curTime-startTime >= 0.0125:
 			EsigHistory.append(EsignalM)
@@ -344,16 +345,17 @@ def readFrame(frame, isintersect):
 	# lowboundsYellow = np.array([10,59,67])
 	# upboundsYellow = np.array([39,229,219])
 
-	# lowboundsYellow = np.array([15,51,34])
-	# upboundsYellow = np.array([34,248,220])
+	lowboundsYellow = np.array([15,51,34])
+	upboundsYellow = np.array([34,248,220])
 
-	# lbPurp = np.array([141,18,97])
-	# ubPurp = np.array([170,250,255])
+	lbPurp = np.array([141,18,97])
+	ubPurp = np.array([170,250,255])
 
-	# maskY = cv2.inRange(img, lowboundsYellow, upboundsYellow)
-	# maskP = cv2.inRange(img, lbPurp, ubPurp)
-	# maskTot = cv2.bitwise_or(maskY,maskP)
-	maskB = cv2.inRange(img,np.array([7,61,58]),np.array([115,222,255]))
+	maskY = cv2.inRange(img, lowboundsYellow, upboundsYellow)
+	maskP = cv2.inRange(img, lbPurp, ubPurp)
+	maskB = cv2.bitwise_or(maskY,maskP)
+	# maskB = cv2.inRange(img,np.array([7,61,58]),np.array([115,222,255]))
+	
 	TopLine = maskB[1:15,1:75]
 	if np.any(TopLine==255):
 		distance = np.max(np.where(TopLine==255))
