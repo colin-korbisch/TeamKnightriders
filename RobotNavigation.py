@@ -337,8 +337,7 @@ def TurnRight():
 			print "Turn Complete"
 			break
 
-def UpdateMap(pickup):
-	# This has been commented out for the dry-run around the perimeter
+def UpdateMap(pickup):	# This has been commented out for the dry-run around the perimeter
 
 	robotLoc = []
 	psngrLoc = []
@@ -393,6 +392,8 @@ def UpdateMap(pickup):
 
 def sendState(stateIndex):
 	#send the stateID to Arduino
+	#when robot position = passenger position (with offset), send pixie pin high, wait for pixie to respond/toggle motor, send arm pin high
+
 
 def lookStopLight():
 	out = []
