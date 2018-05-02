@@ -114,10 +114,14 @@ def StraightLineControl(EsigHistory,LaneDist):
 	# Integral Term Goes Here:
 	Lsum = np.trapz(LaneDist[-10:])
 
-	# steerContro = lkp*LaneDist[-1] + lkd*Ldif + lki*Lsum
+	# Weighting combination of two PID controllers:
+	# 1: Angular orientation of the two lane lines (Angle PID)
+	# 2: Horiztional distance of the left lane edge from the left edge of robot's visual frame (Lane Distance PID)
 	steerContro = 0.55*(kp*EsigHistory[-1] + kd*Edif + ki*Esum) + 0.45*(lkp*LaneDist[-1] + lkd*Ldif + lki*Lsum)
 
 	UpdateSteering(10.8,steerContro)
+
+	# Slowing down the motor proportionally to the error signal
 	if 8.2-0.05*abs(LaneDist[-1]) <= 7.88:
 		UpdateMotor(7.5)
 		time.sleep(0.2)
@@ -189,6 +193,8 @@ def pixel2coord(pixelLoc):
 	return blkPos
 
 def TurnLeft():
+	# Continue going straight until the next intersection
+	# Turn left when the horizontal tape is some set distance away from the robot
 	print "Left Turn State"
 	EsigHistory = []
 	LdistHist = []
@@ -265,6 +271,8 @@ def TurnLeft():
 			break
 
 def TurnRight():
+	# Continue going straight until you hit the next intersection
+	# Turn right once the right lane tape is detected in region of visual frame
 	print "Right Turn State"
 	EsigHistory = []
 	LdistHist = []
@@ -340,7 +348,7 @@ def TurnRight():
 			print "Turn Complete"
 			break
 
-def UpdateMap(pickup):	# This has been commented out for the dry-run around the perimeter
+def UpdateMap(pickup):	
 
 	robotLoc = []
 	psngrLoc = []
@@ -349,6 +357,8 @@ def UpdateMap(pickup):	# This has been commented out for the dry-run around the 
 	robData = split(robL)
 	robotLocation = [robData[1], robData[2]]
 	robPos = pixel2coord(robotLocation)
+
+	# Generating path commands to go from robot's initial position to the passenger in order to pickup
 	if pickup:
 		psngrL = split(psngrL)
 		psngrLocation = [psngrL[1], psngrL[2]]
@@ -368,7 +378,7 @@ def UpdateMap(pickup):	# This has been commented out for the dry-run around the 
 				i = i-1
 				newcomm.append('S{}'.format(goS))
 		outcommands = newcomm[::-1]
-
+	# Generating path commands to go from robot position (at pickup) to the passenger's destination in order to drop-off
 	else:
 		destL = split(destL)
 		destLocation = [destL[1], destL[2]]
@@ -418,8 +428,6 @@ def lookStopLight():
 
 def GoStraight(skipIntersect,nxTurn):
 	# continue going straight until you skip the correct num intersections
-	# once you do, approach the intersection until you are at the correct distance
-	# once at the correct distance, leave this state to begin your turn
 	EsigHistory = []
 	LdistHist = []
 	EsignalM = 0
@@ -435,7 +443,6 @@ def GoStraight(skipIntersect,nxTurn):
 	leaveInt = True
 	oldInt = False
 
-	# for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
 	while True:
 		frame = vs.read()
 		# Do some image processing stuff...
@@ -470,9 +477,11 @@ def GoStraight(skipIntersect,nxTurn):
 				leaveInt = True
 				enterInt = False
 				numInt = numInt + 1
+				outpath.pop()
 			# print "Did Enter Int?", enterInt
 			# print "Did Leave Int?", leaveInt
 		else:
+			# Once you have skipped the requisit number of intersections, leave "GoStraight" mode
 			print "Entering Turn Mode"
 			break
 
@@ -587,9 +596,17 @@ def readFrame(frame, isintersect):
 	edges = cv2.Canny(gray,50,150,apertureSize = 3)
 
 	lines = cv2.HoughLines(edges,0.5,np.pi/180,35)
+	# Left Line searches the left half of the frames (all rows, columns from 0 up to 70)
 	leftLines = cv2.HoughLines(edges[:,0:70],0.5,np.pi/180,20) #Colin - looking at top and bottom of screen or left and right???
-	rightLines = cv2.HoughLines(edges[:,80:150],0.5,np.pi/180,20)
-	centerline = cv2.HoughLines(edges[:,]) #Tasha did this for the center of intersection to start left turn
+	# Colin: looking at the left half of the screen
+
+	# Right Line searches the right half of hte frame (all rows, columns from 80 up to 149.)
+	# Indexing starts at 0. A frame of width 150 starts at 0 and ends it's index at 149
+
+	rightLines = cv2.HoughLines(edges[:,80:149],0.5,np.pi/180,20)
+	# centerline = cv2.HoughLines(edges[:,]) #Tasha did this for the center of intersection to start left turn
+	# See my updates in readFrameLeft (Colin)
+
 	if np.any(leftLines != None):
 		for line in leftLines:
 			line = line[0]
@@ -736,6 +753,10 @@ def readFrameLeft(frame):
 
 
 	checkCenter = np.where(maskTot[:,99:149] == 255)
+
+	# To the the center of the frame, you need to check all rows and the 74th column:
+	# checkCenter = np.where(maskTot[:,74]==255)
+
 	if checkCenter[0].size:
 		centerdist = np.min(checkCenter)
 	else:
@@ -773,6 +794,9 @@ def StopCar():
 	UpdateMotor(7.4)
 	time.sleep(1)
 
+
+global outpath
+global outcommands
 # Initialize Robot and Passenger Locations:
 outpath, outcommands = UpdateMap(1)
 curState = outcommands.pop()
