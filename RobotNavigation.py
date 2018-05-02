@@ -680,8 +680,8 @@ def readFrameRight(frame):
 	lbPurp = np.array([141,18,97])
 	ubPurp = np.array([170,112,143])
 
-	maskY = cv2.inRange(display, lowboundsYellow, upboundsYellow)
-	maskP = cv2.inRange(display, lbPurp, ubPurp)
+	maskY = cv2.inRange(img, lowboundsYellow, upboundsYellow)
+	maskP = cv2.inRange(img, lbPurp, ubPurp)
 	maskTot = cv2.bitwise_or(maskY,maskP)
 	# maskB = cv2.inRange(img,np.array([7,61,58]),np.array([115,222,255]))
 	# colLookAheadIDs = np.where(np.equal(maskTot[:,lookAheadColumn],255))
@@ -689,27 +689,27 @@ def readFrameRight(frame):
 	# check2 = np.any(maskB[133,130:]==255)
 	# check3 = np.any(maskB[139,130:]==255)
 
-	checkLOC = maskTot[120,140] == 255
-	checkLOC2 = maskTot[120,145] == 255
-	checkLOC3 = maskTot[118,142] == 255
-	# cv2.line(imgSmall,(140,0),(140,149),[255,255,0],1)
-	# cv2.line(imgSmall,(0,120),(149,120),[255,255,0],1)
-	# cv2.imshow('frame',imgSmall)
-	# # cv2.imshow('image Mask',maskB)
-	# cv2.waitKey()
-	print "R Lane Detection:", checkLOC, checkLOC2, checkLOC3
-	if checkLOC or checkLOC2 or checkLOC3:
+	# check within a small region of the frame whether the lane tape is there:
+	circle = maskTot[115:120,141:146]
+
+
+	# OLD METHOD:
+	# checkLOC = maskTot[120,140] == 255
+	# checkLOC2 = maskTot[120,145] == 255
+	# checkLOC3 = maskTot[118,142] == 255
+	# # cv2.line(imgSmall,(140,0),(140,149),[255,255,0],1)
+	# # cv2.line(imgSmall,(0,120),(149,120),[255,255,0],1)
+	# # cv2.imshow('frame',imgSmall)
+	# # # cv2.imshow('image Mask',maskB)
+	# # cv2.waitKey()
+	# print "R Lane Detection:", checkLOC, checkLOC2, checkLOC3
+	# if checkLOC or checkLOC2 or checkLOC3:
+
+	# if the lane tape is in that region, then we can turn right
+	if np.any(circle==255):
 		detectR = True
 	else:
 		detectR = False
-	# print "Right Lane Detection:", check1, check2, check3
-	# # check2 = np.any(maskB[0,75:]==255)
-	# # works on the assumption that the camera will not see both the intersecting line and far line of the road
-	# print "RLane Sum:" , sum([check1,check2,check3])
-	# if sum([check1,check2,check3])<=1:
-	# 	detectR = False
-	# else:
-	# 	detectR = True
 
 	return rho_out, theta_out, theta_outL, theta_outR, L_dist, detectR
 
@@ -727,9 +727,11 @@ def readFrameLeft(frame):
 	lbPurp = np.array([141,18,97])
 	ubPurp = np.array([170,112,143])
 
-	maskY = cv2.inRange(display, lowboundsYellow, upboundsYellow)
-	maskP = cv2.inRange(display, lbPurp, ubPurp)
+	maskY = cv2.inRange(img, lowboundsYellow, upboundsYellow)
+	maskP = cv2.inRange(img, lbPurp, ubPurp)
 	maskTot = cv2.bitwise_or(maskY,maskP)
+
+	# Blue tape masking from practice in lab office
 	# maskB = cv2.inRange(img,np.array([7,61,58]),np.array([115,222,255]))
 
 
@@ -743,7 +745,7 @@ def readFrameLeft(frame):
 	return rho_out, theta_out, theta_outL, theta_outR, L_dist, centerdist
 def UpdateMotor(newDC):
 	# speedLimit = 7.9 #Comp speed limit
-	speedLimit = 7.87
+	speedLimit = 7.87 # This sets the robot's absolute limit in PWM sent to motor driver
 	# Reverse ~ 7.14%
 	# Neurtral ~ 7.5%
 	# Forward ~ 7.8%
@@ -755,6 +757,7 @@ def UpdateMotor(newDC):
 def UpdateSteering(neutral, controlSign):
 	# 9% is Left
 	# 13% is Right
+	# Limit the PWM output to bounds for servo
 	if neutral - controlSign <= 9:
 		newDC = 9
 	elif neutral - controlSign >= 13:
@@ -766,6 +769,7 @@ def UpdateSteering(neutral, controlSign):
 	time.sleep(0.5)
 
 def StopCar():
+	# Reduce PWM of the motor to neutral
 	UpdateMotor(7.4)
 	time.sleep(1)
 
