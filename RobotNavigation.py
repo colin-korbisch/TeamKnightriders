@@ -1,5 +1,6 @@
 from BreadthSearch import *
 from PiSkyPixy import *
+from PedestrianDetectionv2 import *
 import RPi.GPIO as GPIO
 from picamera.array import PiRGBArray
 from picamera import PiCamera
@@ -7,6 +8,8 @@ from imutils.video.pivideostream import PiVideoStream
 import imutils
 import time
 import cv2
+
+GPIO.setmode(GPIO.BOARD)
 
 def interDetect(mask,row,isintersect):
 	interLine = mask[row]
@@ -520,6 +523,32 @@ def GoStraight(skipIntersect,nxTurn):
 def sendTurnError(error_signal)		
 
 def PsngerPickup():
+	#Pixie pin 36 to 12
+	GPIO.setup(36, GPIO.OUT) 
+	#Arm pin 37 to 11
+	GPIO.setup(37, GPIO.OUT)
+
+	#If we are at passenger location turn pixie
+	GPIO.output(36, 1)
+	time.sleep(.1)
+	GPIO.output(36,0)
+	time.sleep(1)
+	
+	#If pixie sends signal that center of mass of passenger is okay/if the GPS offset is okay
+	#pick up passenger
+	GPIO.output(37,1)
+	time.sleep(.1)
+	GPIO.output(37,0)
+	time.sleep(3)
+
+def PsngerDropoff():
+	#GPS offset okay, initiate drop off passenger
+	#drop off passenger
+	GPIO.output(37,1)
+	time.sleep(.1)
+	GPIO.output(37,0)
+	time.sleep(3)
+
 
 def readFrame(frame, isintersect):
 
@@ -558,8 +587,9 @@ def readFrame(frame, isintersect):
 	edges = cv2.Canny(gray,50,150,apertureSize = 3)
 
 	lines = cv2.HoughLines(edges,0.5,np.pi/180,35)
-	leftLines = cv2.HoughLines(edges[:,0:70],0.5,np.pi/180,20)
+	leftLines = cv2.HoughLines(edges[:,0:70],0.5,np.pi/180,20) #Colin - looking at top and bottom of screen or left and right???
 	rightLines = cv2.HoughLines(edges[:,80:150],0.5,np.pi/180,20)
+	centerline = cv2.HoughLines(edges[:,]) #Tasha did this for the center of intersection to start left turn
 	if np.any(leftLines != None):
 		for line in leftLines:
 			line = line[0]
@@ -703,7 +733,7 @@ def readFrameLeft(frame):
 	# maskB = cv2.inRange(img,np.array([7,61,58]),np.array([115,222,255]))
 
 
-	checkCenter = np.where(maskTot[:,75] == 255)
+	checkCenter = np.where(maskTot[:,99:149] == 255)
 	if checkCenter[0].size:
 		centerdist = np.min(checkCenter)
 	else:
