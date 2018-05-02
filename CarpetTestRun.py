@@ -114,7 +114,7 @@ def StraightLineControl(EsigHistory,LaneDist):
 	# lkd = 0.0019
 	# lki = 0.0022
 	#lkp = .005
-	lkp = 0
+	lkp = 0.01
 	lkd = 5
 	lki = 0.01
 
@@ -331,6 +331,82 @@ def TurnRight():
 			print "Turn Complete"
 			break
 
+def TurnLeft():
+	print "Left Turn State"
+	EsigHistory = []
+	LdistHist = []
+	EsignalM = 0
+	LsigM = 0
+	RError = None
+
+	UpdateMotor(7.83)
+	isTurning = False
+	lineSkip = True
+	checkComplete = False
+	startTime = time.time()
+
+	# for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+	while True:
+		frame = vs.read()
+		curTime = time.time()
+		# Do some image processing stuff...
+
+		rho_out, theta_out, theta_outL, theta_outR, L_dist, centDist = readFrameLeft(frame)
+		# print "Can we see the right lane?: ", detectR
+		# rawCapture.truncate(0)
+		if not isTurning:
+			if centDist>5: #distance to tune for left turning. the larger the value, the later the car will turn
+				print "Now Turning Left:"
+				UpdateSteering(9,0)
+				isTurning = True
+			# if Interdistance >= 20: # How far the first intersection line travels down the frame BEFORE the next intersection line appears in frame
+			# 	lineSkip = False
+
+			# if distancePx >= 10 and not lineSkip:# Adjust this constant as needed
+			# 	UpdateSteering(13)
+			# 	isTurning = True
+
+		if not isinstance(theta_out,np.ndarray):
+			theta_out = np.array(theta_out)
+		if not isinstance(rho_out,np.ndarray):
+			rho_out = np.array(rho_out)		
+
+		LError, LDistE = GetErrorSignal(theta_outL,L_dist, 1)
+		# RError = GetErrorSignal(theta_outR, L_dist, 0)
+
+		# Mean Error:
+		if RError:
+			ErrorSignal = (LError+RError)/2.
+		else:
+			ErrorSignal = LError
+		
+		EsignalM = (EsignalM+ErrorSignal)/2.
+		LsigM = (LsigM+LDistE)/2.
+
+		if not isTurning and curTime-startTime >= 0.0125:
+			EsigHistory.append(EsignalM)
+			LdistHist.append(LsigM)
+			StraightLineControl(EsigHistory,LdistHist)
+			startTime = time.time()
+
+		if isTurning:
+			# Continue turn until a line around 45deg crosses the frame
+			# Now you need to check the frame until you complete the turn
+
+			# Find 45deg lines
+			arr1 = np.greater_equal(theta_outR,2*np.pi/16)
+			arr2 = np.less_equal(theta_outR, 6*np.pi/16)
+			and_arr = np.logical_and(arr1,arr2)
+			diagLineIDs = np.where(and_arr)
+			if diagLineIDs[0].size:
+				checkComplete = True
+
+		if checkComplete:
+			isTurning = False
+			UpdateSteering(11,0)
+			print "Turn Complete"
+			break
+
 def readFrame(frame, isintersect):
 
 	rho_out = []
@@ -509,16 +585,17 @@ def readFrameRight(frame):
 	imgSmall = cv2.resize(imgini,(150,150),cv2.INTER_AREA)
 	img=cv2.cvtColor(imgSmall,cv2.COLOR_BGR2HSV)
 
-	# lowboundsYellow = np.array([25,29,60])
-	# upboundsYellow = np.array([28,236,255])
+	lowboundsYellow = np.array([25,29,60])
+	upboundsYellow = np.array([28,236,255])
 
-	# lbPurp = np.array([141,18,97])
-	# ubPurp = np.array([170,112,143])
+	lbPurp = np.array([141,18,97])
+	ubPurp = np.array([170,112,143])
 
-	# maskY = cv2.inRange(display, lowboundsYellow, upboundsYellow)
-	# maskP = cv2.inRange(display, lbPurp, ubPurp)
-	# maskTot = cv2.bitwise_or(maskY,maskP)
-	maskB = cv2.inRange(img,np.array([7,61,58]),np.array([115,222,255]))
+	maskY = cv2.inRange(img, lowboundsYellow, upboundsYellow)
+	maskP = cv2.inRange(img, lbPurp, ubPurp)
+	maskB = cv2.bitwise_or(maskY,maskP)
+	# maskB = cv2.inRange(img,np.array([7,61,58]),np.array([115,222,255]))
+	
 	# colLookAheadIDs = np.where(np.equal(maskTot[:,lookAheadColumn],255))
 	# check1 = np.any(maskB[137,130:]==255)
 	# check2 = np.any(maskB[133,130:]==255)
@@ -557,6 +634,35 @@ def readFrameRight(frame):
 	# 	detectR = True
 
 	return rho_out, theta_out, theta_outL, theta_outR, L_dist, detectR
+
+def readFrameLeft(frame):
+	rho_out, theta_out, theta_outL,theta_outR, L_dist, isintersect = readFrame(frame, False)
+	
+	imgini = frame
+
+	imgSmall = cv2.resize(imgini,(150,150),cv2.INTER_AREA)
+	img=cv2.cvtColor(imgSmall,cv2.COLOR_BGR2HSV)
+
+	lowboundsYellow = np.array([25,29,60])
+	upboundsYellow = np.array([28,236,255])
+
+	lbPurp = np.array([141,18,97])
+	ubPurp = np.array([170,112,143])
+
+	maskY = cv2.inRange(img, lowboundsYellow, upboundsYellow)
+	maskP = cv2.inRange(img, lbPurp, ubPurp)
+	maskTot = cv2.bitwise_or(maskY,maskP)
+	# maskB = cv2.inRange(img,np.array([7,61,58]),np.array([115,222,255]))
+
+
+	checkCenter = np.where(maskTot[:,99:149] == 255)
+	if checkCenter[0].size:
+		centerdist = np.min(checkCenter)
+	else:
+		centerdist = 0
+	
+
+	return rho_out, theta_out, theta_outL, theta_outR, L_dist, centerdist
 
 def UpdateMotor(newDC):
 	# speedLimit = 7.9 #Comp speed limit
@@ -606,8 +712,9 @@ def StopCar():
 
 # Initialize Robot and Passenger Locations:
 # outpath, outcommands = UpdateMap(1)
-outcommands = ['R','S1']
+# outcommands = ['R','S1']
 #outcommands = ['R']
+outcommands = ['L', 'R', 'S0']
 outpath = [13, 14, 18, 20, 5, 8, 11, 12]
 curState = outcommands.pop()
 curLoc = outpath.pop()
@@ -671,6 +778,10 @@ while run_robot:
 	elif curState == 'R':
 		# turn right until do something else
 		TurnRight()
+		move_complete = True
+
+	elif curState == 'L':
+		TurnLeft()
 		move_complete = True
 
 	if move_complete:
